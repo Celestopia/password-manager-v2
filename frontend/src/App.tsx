@@ -9,6 +9,8 @@ import type { CustomField, RecordDetails, RecordInput, RecordSummary, VaultStatu
 type VaultDialogState = { mode: 'unlock' | 'create'; path: string }
 type RecordDialogState = { mode: 'add' } | { mode: 'edit'; initial: RecordDetails; customFields: CustomField[] }
 
+const NOTICE_DISMISS_DELAY_MS = 5_000
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred.'
 }
@@ -72,6 +74,12 @@ export function App() {
     const timeout = window.setTimeout(() => setRevealedPassword(null), 10_000)
     return () => window.clearTimeout(timeout)
   }, [revealedPassword])
+
+  useEffect(() => {
+    if (!notice) return
+    const timeout = window.setTimeout(() => setNotice(''), NOTICE_DISMISS_DELAY_MS)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
 
   const filteredRecords = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()

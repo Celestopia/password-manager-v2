@@ -1,12 +1,16 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
 import { resetMockNativeApi } from './api/mock'
 
 describe('App', () => {
   beforeEach(() => resetMockNativeApi())
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   it('offers open and create actions while the vault is locked', async () => {
     render(<App />)
@@ -45,5 +49,19 @@ describe('App', () => {
 
     expect(await screen.findByText('The password entries do not match.')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Create vault' })).toBeInTheDocument()
+  })
+
+  it('automatically dismisses a success notice after unlocking', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Vault unlocked.')
+    await act(() => vi.advanceTimersByTimeAsync(5_000))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
