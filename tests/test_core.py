@@ -115,6 +115,20 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
     assert load_vault(path, MASTER_PASSWORD).records[0]["password"] == "new secret"
 
 
+def test_export_reauthentication_locks_session_after_one_failure(tmp_path: Path) -> None:
+    path = tmp_path / "reauth.pmdb"
+    session = VaultSession()
+    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+
+    session.authorize_plaintext_export(MASTER_PASSWORD)
+    assert session.unlocked is True
+
+    with pytest.raises(VaultAuthenticationError, match="vault has been locked"):
+        session.authorize_plaintext_export("incorrect master password")
+
+    assert session.unlocked is False
+
+
 def test_v1_golden_vault_is_read_without_migration(tmp_path: Path) -> None:
     path = tmp_path / "legacy.pmdb"
     path.write_bytes(base64.b64decode(V1_GOLDEN))

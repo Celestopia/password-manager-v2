@@ -11,7 +11,9 @@ operation flows.
 - The bridge exposes business methods only; there is no arbitrary file, shell,
   Python evaluation, or generic URL-opening method.
 - File operations require a one-shot native-dialog path grant for their exact
-  purpose. Plaintext export also requires explicit confirmation.
+  purpose. Plaintext export also requires explicit confirmation and fresh
+  master-password reauthentication. A mismatch immediately locks the vault and
+  clears application-managed clipboard content.
 - Passwords and custom-field values are omitted from list/detail responses.
   Reveal is explicit, password display auto-hides after 10 seconds, and native
   clipboard content is cleared after 30 seconds only if still unchanged.
@@ -31,8 +33,9 @@ operation flows.
   starts, or the vault locks. Copy avoids renderer exposure but the Windows
   clipboard is visible to other local processes during its 30-second lifetime.
 - Plaintext JSONL/CSV import and export files are outside vault protection. The
-  app warns and requires confirmation, but deletion and secure erasure remain
-  the user's responsibility and cannot be guaranteed on modern storage.
+  app warns, requires master-password reauthentication, and grants one export
+  operation for at most five minutes. Deletion and secure erasure remain the
+  user's responsibility and cannot be guaranteed on modern storage.
 - The `.bak` file is encrypted with the previous state and, after master-password
   rotation, the previous password. Keeping it improves recoverability but means
   password rotation does not invalidate already retained encrypted backups.

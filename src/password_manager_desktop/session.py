@@ -14,6 +14,7 @@ from password_manager_core.exceptions import (
     PlaintextConfirmationError,
     RecordValidationError,
     SessionStateError,
+    VaultAuthenticationError,
     VaultConflictError,
 )
 from password_manager_core.locking import VaultFileLock
@@ -281,6 +282,16 @@ class VaultSession:
             else:
                 raise ValueError("Unsupported export format.")
             atomic_write(path.expanduser().resolve(), data, make_backup=False)
+
+    def authorize_plaintext_export(self, master_password: str) -> None:
+        """Re-authenticate a plaintext export or lock immediately on failure."""
+
+        with self._guard:
+            self._require_unlocked()
+            if hmac.compare_digest(master_password, self._master_password):
+                return
+            self.lock()
+            raise VaultAuthenticationError("Master password is incorrect. The vault has been locked.")
 
     def change_master_password(self, current_password: str, new_password: str) -> None:
         """Re-authenticate the current file and rewrite it under a new password."""

@@ -14,6 +14,7 @@ export interface NativeApi {
   choose_new_vault_path(): Promise<ApiResponse<{ path: string | null }>>
   choose_import_file(): Promise<ApiResponse<{ path: string | null }>>
   choose_export_file(format: string): Promise<ApiResponse<{ path: string | null }>>
+  authorize_export(masterPassword: string): Promise<ApiResponse<{ authorized: boolean }>>
   unlock_vault(path: string, password: string): Promise<ApiResponse<VaultStatus>>
   create_vault(path: string, password: string, overwrite: boolean, memoryMiB: number): Promise<ApiResponse<VaultStatus>>
   lock_vault(): Promise<ApiResponse<VaultStatus>>
@@ -32,4 +33,3 @@ export interface NativeApi {
 }
 
 declare global { interface Window { pywebview?: { api: NativeApi } } }
-

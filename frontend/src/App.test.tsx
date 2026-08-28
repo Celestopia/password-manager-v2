@@ -66,4 +66,38 @@ describe('App', () => {
     await act(() => vi.advanceTimersByTimeAsync(5_000))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('requires the master password before exporting plaintext', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await user.click(await screen.findByRole('button', { name: 'JSONL' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Export plaintext JSONL' })
+    expect(dialog).toHaveTextContent('every password and custom-field value in plaintext')
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Verify and export' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Plaintext export saved to C:\\Mock\\passwords.jsonl')
+    expect(dialog).not.toBeInTheDocument()
+  })
+
+  it('locks the vault after one failed export reauthentication', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await user.click(await screen.findByRole('button', { name: 'CSV' }))
+    await user.type(screen.getByLabelText('Master password'), 'wrong password')
+    await user.click(screen.getByRole('button', { name: 'Verify and export' }))
+
+    expect(await screen.findByRole('button', { name: 'Open a vault' })).toBeEnabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Master password is incorrect. The vault has been locked.')
+    expect(screen.queryByRole('dialog', { name: 'Export plaintext CSV' })).not.toBeInTheDocument()
+  })
 })

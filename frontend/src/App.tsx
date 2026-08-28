@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { api } from './api/client'
+import { ExportDialog } from './features/vault/ExportDialog'
 import { PasswordDialog } from './features/vault/PasswordDialog'
 import { RecordDialog } from './features/vault/RecordDialog'
 import { VaultDialog } from './features/vault/VaultDialog'
@@ -32,6 +33,7 @@ export function App() {
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null)
   const [recordDialog, setRecordDialog] = useState<RecordDialogState | null>(null)
   const [passwordDialog, setPasswordDialog] = useState(false)
+  const [exportDialog, setExportDialog] = useState<'jsonl' | 'csv' | null>(null)
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null)
   const [revealedFields, setRevealedFields] = useState<CustomField[] | null>(null)
 
@@ -126,6 +128,7 @@ export function App() {
       setQuery('')
       setRevealedPassword(null)
       setRevealedFields(null)
+      setExportDialog(null)
       setNotice('Vault locked and secrets cleared from the session.')
       setError('')
     } catch (caught) {
@@ -241,16 +244,38 @@ export function App() {
     }
   }
 
-  const exportRecords = async (format: 'jsonl' | 'csv') => {
-    if (!window.confirm(`Export all records, including passwords, as plaintext ${format.toUpperCase()}?`)) return
+  const exportRecords = async (masterPassword: string) => {
+    if (!exportDialog) return
+    const format = exportDialog
+    setBusy(true)
+    setError('')
     try {
+      await api.authorizeExport(masterPassword)
+      setExportDialog(null)
       const choice = await api.chooseExport(format)
       if (!choice.path) return
       const result = await api.exportRecords(choice.path, format)
       setNotice(`Plaintext export saved to ${result.path}`)
       setError('')
     } catch (caught) {
+      try {
+        const nextStatus = await api.status()
+        if (!nextStatus.unlocked) {
+          setStatus(nextStatus)
+          setRecords([])
+          setSelectedId(null)
+          setDetails(null)
+          setQuery('')
+          setRevealedPassword(null)
+          setRevealedFields(null)
+          setExportDialog(null)
+        }
+      } catch {
+        // Preserve the original export error if the follow-up status check fails.
+      }
       showError(caught)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -316,7 +341,7 @@ export function App() {
           </div>
           <div className="records-footer">
             <button className="button-quiet" onClick={() => void importRecords()}>Import JSONL</button>
-            <div className="export-group"><span>Export:</span><button className="button-quiet" onClick={() => void exportRecords('jsonl')}>JSONL</button><button className="button-quiet" onClick={() => void exportRecords('csv')}>CSV</button></div>
+            <div className="export-group"><span>Export:</span><button className="button-quiet" onClick={() => setExportDialog('jsonl')}>JSONL</button><button className="button-quiet" onClick={() => setExportDialog('csv')}>CSV</button></div>
           </div>
         </aside>
         <section className="detail-pane">
@@ -333,6 +358,7 @@ export function App() {
       </div>
       {recordDialog && <RecordDialog {...recordDialog} busy={busy} onClose={() => setRecordDialog(null)} onSubmit={saveRecord} />}
       {passwordDialog && <PasswordDialog busy={busy} onClose={() => setPasswordDialog(false)} onSubmit={changePassword} />}
+      {exportDialog && <ExportDialog format={exportDialog} busy={busy} onClose={() => { if (!busy) setExportDialog(null) }} onSubmit={exportRecords} />}
     </div>
   )
 }

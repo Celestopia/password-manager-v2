@@ -55,6 +55,11 @@ The GUI uses native file dialogs for vault, import, and export paths. A new
 master password must contain at least 12 characters. The default Argon2id memory
 setting is 64 MiB.
 
+JSONL and CSV exports contain plaintext secrets. Choosing either export format
+opens a password panel before the save dialog. Re-enter the current master
+password to authorize one export; one incorrect attempt immediately locks the
+vault and clears application-managed clipboard content.
+
 For frontend-only development with synthetic in-memory data:
 
 ```powershell

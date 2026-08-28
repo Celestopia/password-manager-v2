@@ -87,6 +87,12 @@ Native file dialogs create one-shot grants keyed by resolved path and purpose.
 Import, export, unlock, and create operations must consume a matching grant;
 typing an arbitrary path in JavaScript is rejected.
 
+Plaintext export additionally requires a fresh master-password check enforced
+by `VaultSession`. Success creates a bridge-local, single-use authorization that
+expires after five minutes. Cancellation, timeout, explicit locking, shutdown,
+or one export revokes it. One password mismatch immediately locks the session
+and clears application-managed clipboard content.
+
 `WindowsClipboard` writes copied passwords without returning them to the
 renderer. It clears after 30 seconds only if the clipboard still contains the
 application-managed value. `resources.py` resolves the built frontend from the
@@ -243,7 +249,17 @@ Add, update, delete, and import follow one sequence:
 Failure before step 9 leaves memory unchanged. Temporary files are removed in a
 `finally` path. The backup represents the last persisted encrypted state.
 
-### 6.4 Concurrency and conflicts
+### 6.4 Plaintext export reauthentication
+
+Selecting JSONL or CSV opens a modal that warns that all secrets will be written
+in plaintext and asks for the master password. The backend compares it in
+constant time with the authenticated session password. Failure immediately
+locks the vault; success permits only the following native save-dialog and one
+matching export. The password is not retained as an export credential in the
+renderer, and the authorization is revoked on cancellation or after five
+minutes.
+
+### 6.5 Concurrency and conflicts
 
 An unlocked session holds a non-blocking one-byte Windows lock on
 `<vault>.pmdb.lock`. Another cooperating process fails with `VaultBusyError`.
@@ -254,7 +270,7 @@ SHA-256 content fingerprints additionally detect programs that ignore the lock.
 A mismatch raises `VaultConflictError`; the caller must lock and reopen before
 saving again.
 
-### 6.5 Master-password rotation
+### 6.6 Master-password rotation
 
 Rotation compares the current in-memory password in constant time, verifies the
 fingerprint, reauthenticates from disk, and rewrites with the new password. It
@@ -328,9 +344,10 @@ artifacts.
 
 Python tests cover authentication, schemas, encrypted writes, backups,
 conflicts, fixed-format compatibility, malicious KDF bounds, locking, KDF cost
-retention, salt/nonce rotation, rollback, minimal bridge exposure, and one-shot
-path grants. Frontend tests cover locked state, unlock, password masking, reveal,
-and password confirmation.
+retention, salt/nonce rotation, rollback, minimal bridge exposure, one-shot path
+grants, and export reauthentication. Frontend tests cover locked state, unlock,
+password masking, reveal, password confirmation, guarded export, and lockout
+after one failed export password attempt.
 
 `scripts/verify.ps1` also runs Ruff, strict Mypy, TypeScript compilation, ESLint,
 Vitest, a Vite production build, and a source Edge-backend smoke test. The build

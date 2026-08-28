@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
@@ -31,17 +32,22 @@ T = TypeVar("T")
 class DesktopBridge:
     """Expose only explicit business operations to the renderer."""
 
+    _EXPORT_AUTHORIZATION_SECONDS = 300.0
+
     def __init__(self, session: VaultSession | None = None, clipboard: WindowsClipboard | None = None) -> None:
         self._session = session or VaultSession()
         self._clipboard = clipboard or WindowsClipboard()
         self._window: webview.Window | None = None
         self._path_grants: dict[Path, set[str]] = {}
         self._path_grants_lock = threading.RLock()
+        self._export_authorized_until = 0.0
+        self._export_authorization_lock = threading.RLock()
 
     def _attach_window(self, window: webview.Window) -> None:
         self._window = window
 
     def _shutdown(self) -> None:
+        self._revoke_export_authorization()
         self._clipboard.clear_managed()
         self._session.lock()
 
@@ -91,6 +97,7 @@ class DesktopBridge:
 
     def lock_vault(self) -> dict[str, object]:
         def lock() -> dict[str, object]:
+            self._revoke_export_authorization()
             self._clipboard.clear_managed()
             return self._session.lock()
 
@@ -138,8 +145,25 @@ class DesktopBridge:
 
         return self._call(import_records)
 
+    def authorize_export(self, master_password: object) -> dict[str, object]:
+        def authorize() -> dict[str, bool]:
+            self._revoke_export_authorization()
+            try:
+                self._session.authorize_plaintext_export(
+                    self._require_string(master_password, "master_password")
+                )
+            except VaultAuthenticationError:
+                self._clipboard.clear_managed()
+                raise
+            with self._export_authorization_lock:
+                self._export_authorized_until = time.monotonic() + self._EXPORT_AUTHORIZATION_SECONDS
+            return {"authorized": True}
+
+        return self._call(authorize)
+
     def export_records(self, path: object, export_format: object, confirmed_plaintext: object) -> dict[str, object]:
         def export() -> dict[str, str]:
+            self._consume_export_authorization()
             if confirmed_plaintext is not True:
                 raise PlaintextConfirmationError("Plaintext export requires explicit confirmation.")
             selected_format = self._require_string(export_format, "export_format")
@@ -193,21 +217,52 @@ class DesktopBridge:
         return {"path": str(path)}
 
     def _choose_export(self, export_format: object) -> dict[str, str | None]:
-        selected = self._require_string(export_format, "export_format")
-        if selected not in {"jsonl", "csv"}:
-            raise ValueError("Unsupported export format.")
-        result = self._require_window().create_file_dialog(
-            webview.FileDialog.SAVE,
-            save_filename=f"passwords.{selected}",
-            file_types=(("JSON Lines (*.jsonl)",) if selected == "jsonl" else ("CSV (*.csv)",)),
-        )
+        self._require_export_authorization()
+        try:
+            selected = self._require_string(export_format, "export_format")
+            if selected not in {"jsonl", "csv"}:
+                raise ValueError("Unsupported export format.")
+            result = self._require_window().create_file_dialog(
+                webview.FileDialog.SAVE,
+                save_filename=f"passwords.{selected}",
+                file_types=(("JSON Lines (*.jsonl)",) if selected == "jsonl" else ("CSV (*.csv)",)),
+            )
+        except Exception:
+            self._revoke_export_authorization()
+            raise
         if not result:
+            self._revoke_export_authorization()
             return {"path": None}
         path = Path(result[0]).expanduser().resolve()
         if not path.suffix:
             path = path.with_suffix(f".{selected}")
         self._grant(path, f"export_{selected}")
         return {"path": str(path)}
+
+    def _require_export_authorization(self) -> None:
+        with self._export_authorization_lock:
+            authorized = time.monotonic() <= self._export_authorized_until
+        if not authorized:
+            self._revoke_export_authorization()
+            raise PermissionError("Plaintext export requires fresh master-password authorization.")
+
+    def _consume_export_authorization(self) -> None:
+        with self._export_authorization_lock:
+            if time.monotonic() <= self._export_authorized_until:
+                self._export_authorized_until = 0.0
+                return
+        self._revoke_export_authorization()
+        raise PermissionError("Plaintext export requires fresh master-password authorization.")
+
+    def _revoke_export_authorization(self) -> None:
+        with self._export_authorization_lock:
+            self._export_authorized_until = 0.0
+        with self._path_grants_lock:
+            for path, purposes in list(self._path_grants.items()):
+                export_purposes = {purpose for purpose in purposes if purpose.startswith("export_")}
+                purposes.difference_update(export_purposes)
+                if not purposes:
+                    self._path_grants.pop(path, None)
 
     def _grant(self, path: Path, purpose: str) -> None:
         with self._path_grants_lock:

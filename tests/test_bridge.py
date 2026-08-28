@@ -79,3 +79,59 @@ def test_bridge_consumes_file_grants(tmp_path: Path) -> None:
         "code": "PERMISSION_DENIED",
         "message": "The path was not selected through the application file dialog.",
     }
+
+
+def test_bridge_requires_one_shot_export_reauthentication(tmp_path: Path) -> None:
+    vault_path = (tmp_path / "export-auth.pmdb").resolve()
+    first_export = (tmp_path / "first.jsonl").resolve()
+    second_export = (tmp_path / "second.jsonl").resolve()
+    clipboard = FakeClipboard()
+    bridge = DesktopBridge(session=VaultSession(), clipboard=clipboard)  # type: ignore[arg-type]
+    bridge._grant(vault_path, "create_vault")
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+
+    bridge._grant(first_export, "export_jsonl")
+    denied = bridge.export_records(str(first_export), "jsonl", True)
+    assert denied["ok"] is False
+    assert denied["error"] == {
+        "code": "PERMISSION_DENIED",
+        "message": "Plaintext export requires fresh master-password authorization.",
+    }
+
+    assert_data(bridge.authorize_export(MASTER_PASSWORD))
+    bridge._grant(first_export, "export_jsonl")
+    assert_data(bridge.export_records(str(first_export), "jsonl", True))
+    assert first_export.is_file()
+
+    bridge._grant(second_export, "export_jsonl")
+    repeated = bridge.export_records(str(second_export), "jsonl", True)
+    assert repeated["ok"] is False
+    assert repeated["error"] == {
+        "code": "PERMISSION_DENIED",
+        "message": "Plaintext export requires fresh master-password authorization.",
+    }
+
+
+def test_failed_export_reauthentication_locks_and_clears_clipboard(tmp_path: Path) -> None:
+    vault_path = (tmp_path / "failed-export-auth.pmdb").resolve()
+    clipboard = FakeClipboard()
+    clipboard.secret = "managed secret"
+    bridge = DesktopBridge(session=VaultSession(), clipboard=clipboard)  # type: ignore[arg-type]
+    bridge._grant(vault_path, "create_vault")
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+
+    response = bridge.authorize_export("incorrect master password")
+
+    assert response == {
+        "ok": False,
+        "error": {
+            "code": "VAULT_AUTHENTICATION_FAILED",
+            "message": "Master password is incorrect. The vault has been locked.",
+        },
+    }
+    assert assert_data(bridge.get_status()) == {
+        "unlocked": False,
+        "vault_path": None,
+        "record_count": 0,
+    }
+    assert clipboard.secret is None
