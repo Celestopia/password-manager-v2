@@ -20,6 +20,9 @@ try {
         Push-Location (Join-Path $ProjectRoot "frontend")
         try {
             npm run build
+            if ($LASTEXITCODE -ne 0) {
+                throw "Frontend production build failed with exit code $LASTEXITCODE."
+            }
         }
         finally {
             Pop-Location
@@ -32,6 +35,9 @@ try {
         --distpath (Join-Path $ProjectRoot "release") `
         --workpath (Join-Path $ProjectRoot "build\pyinstaller") `
         (Join-Path $ProjectRoot "packaging\password-manager-v2.spec")
+    if ($LASTEXITCODE -ne 0) {
+        throw "PyInstaller failed with exit code $LASTEXITCODE."
+    }
 
     $Executable = Join-Path $ProjectRoot "release\PasswordManagerV2\PasswordManagerV2.exe"
     if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {

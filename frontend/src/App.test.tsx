@@ -33,6 +33,7 @@ describe('App', () => {
     const recordButton = await screen.findByRole('button', { name: /Example Account/ })
     expect(recordButton.querySelector('.account-avatar')).toBeNull()
     await user.click(recordButton)
+    expect(document.querySelector('.large-avatar')).toBeNull()
     expect(await screen.findByText('••••••••••••')).toBeInTheDocument()
     expect(screen.queryByText('demo-password')).not.toBeInTheDocument()
 

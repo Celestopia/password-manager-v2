@@ -64,7 +64,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .record-card { width: 100%; display: flex; align-items: center; gap: .75rem; margin: .12rem 0; padding: .72rem .65rem; border: 1px solid transparent; border-radius: 11px; background: transparent; text-align: left; }
 .record-card:hover { background: #f6f7fb; }
 .record-card.selected { border-color: #d9d6ff; background: #eeedff; }
-.large-avatar { flex: 0 0 auto; display: grid; place-items: center; color: #4a43ad; background: #e9e7ff; font-weight: 800; }
 .record-card-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: .18rem; }
 .record-card-copy strong, .record-card-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .record-card-copy strong { color: #20263a; font-size: .86rem; }
@@ -84,8 +83,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .empty-detail p { margin: 0 0 1.2rem; }
 .empty-vault-icon { width: 72px; height: 72px; display: grid; place-items: center; border: 1px solid #dcdfeb; border-radius: 22px; color: #7770dc; background: #fff; font-size: 2rem; box-shadow: 0 10px 30px rgba(40, 45, 70, .08); }
 .detail-heading { width: 100%; display: flex; align-items: center; gap: 1rem; max-width: 940px; margin: 0 auto clamp(.8rem, 2vh, 1.25rem); }
-.large-avatar { width: 60px; height: 60px; border-radius: 16px; font-size: 1.35rem; }
-.detail-heading > div:nth-child(2) { min-width: 0; }
+.detail-title { min-width: 0; }
 .detail-heading .eyebrow { margin: 0 0 .25rem; }
 .detail-heading h1 { margin: 0; overflow: hidden; color: #171c2f; font-size: 1.8rem; letter-spacing: -.03em; text-overflow: ellipsis; white-space: nowrap; }
 .detail-heading p:last-child { margin: .25rem 0 0; color: #7e8598; }
