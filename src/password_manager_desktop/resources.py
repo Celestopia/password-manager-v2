@@ -15,6 +15,14 @@ def application_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def installation_directory() -> Path:
+    """Return the executable directory or the project root in source runs."""
+
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[2]
+
+
 def frontend_index() -> Path:
     """Return the production Vite index included with the desktop app."""
 

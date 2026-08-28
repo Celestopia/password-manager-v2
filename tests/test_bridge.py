@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from password_manager_core.models import new_record, records_to_jsonl
 from password_manager_desktop.bridge import DesktopBridge
 from password_manager_desktop.session import VaultSession
@@ -25,6 +27,16 @@ class FakeClipboard:
 def assert_data(response: dict[str, object]) -> object:
     assert response["ok"] is True
     return response["data"]
+
+
+def test_default_vault_directory_is_installation_directory_without_creating_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "application"
+    monkeypatch.setattr("password_manager_desktop.bridge.installation_directory", lambda: target)
+
+    assert DesktopBridge._default_vault_directory() == target
+    assert not target.exists()
 
 
 def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path: Path) -> None:

@@ -1,8 +1,12 @@
 """Dependency and package smoke tests for the development environment."""
 
 import struct
+import sys
+from pathlib import Path
 
-from password_manager_desktop.resources import application_icon
+import pytest
+
+from password_manager_desktop.resources import application_icon, installation_directory
 
 
 def test_runtime_dependencies_import() -> None:
@@ -28,3 +32,17 @@ def test_windows_application_icon_has_required_sizes() -> None:
 
     assert (reserved, icon_type) == (0, 1)
     assert {(16, 16), (32, 32), (48, 48), (256, 256)} <= sizes
+
+
+def test_source_installation_directory_is_project_root() -> None:
+    assert installation_directory() == Path(__file__).resolve().parents[1]
+
+
+def test_frozen_installation_directory_is_executable_parent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable = tmp_path / "PasswordManagerV2.exe"
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(executable))
+
+    assert installation_directory() == tmp_path

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import threading
 import time
 from collections.abc import Callable
@@ -25,6 +24,7 @@ from password_manager_core.exceptions import (
 )
 
 from .clipboard import WindowsClipboard
+from .resources import installation_directory
 from .session import VaultSession
 
 T = TypeVar("T")
@@ -279,9 +279,7 @@ class DesktopBridge:
 
     @staticmethod
     def _default_vault_directory() -> Path:
-        base = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "PasswordManagerV2" / "vaults"
-        base.mkdir(parents=True, exist_ok=True)
-        return base
+        return installation_directory()
 
     def _require_window(self) -> webview.Window:
         if self._window is None:
