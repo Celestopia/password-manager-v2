@@ -30,10 +30,13 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
 
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(screen.getByText('Choose an account from the list to view its details.')).toBeInTheDocument()
     const recordButton = await screen.findByRole('button', { name: /Example Account/ })
     expect(recordButton.querySelector('.account-avatar')).toBeNull()
     await user.click(recordButton)
     expect(document.querySelector('.large-avatar')).toBeNull()
+    expect(screen.queryByText('C:\\Mock\\vault.pmdb')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)).toHaveLength(2)
     expect(await screen.findByText('••••••••••••')).toBeInTheDocument()
     expect(screen.queryByText('demo-password')).not.toBeInTheDocument()
 
@@ -100,5 +103,30 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'Open a vault' })).toBeEnabled()
     expect(screen.getByRole('alert')).toHaveTextContent('Master password is incorrect. The vault has been locked.')
     expect(screen.queryByRole('dialog', { name: 'Export plaintext CSV' })).not.toBeInTheDocument()
+  })
+
+  it('shows the requested labels and guidance in the password form', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await user.click(await screen.findByRole('button', { name: '+ Add' }))
+
+    expect(screen.getByLabelText('Creation Date')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('game, finance (use comma to separate tags)')).toBeInTheDocument()
+    expect(screen.getByText('Add your custom information.')).toBeInTheDocument()
+  })
+
+  it('labels the account search field accurately', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByPlaceholderText('Search accounts')).toHaveAccessibleName('Search accounts')
   })
 })

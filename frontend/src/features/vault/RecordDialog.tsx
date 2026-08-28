@@ -61,12 +61,12 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
           <label className="span-two">{mode === 'add' ? 'Password' : 'New password (leave blank to keep current)'}<input type="password" value={password} autoComplete="new-password" spellCheck={false} onChange={(event) => setPassword(event.target.value)} /></label>
           <label>Email<input type="email" value={mail} onChange={(event) => setMail(event.target.value)} /></label>
           <label>Phone number<input value={phonenumber} onChange={(event) => setPhonenumber(event.target.value)} /></label>
-          <label>Relevant date<input value={date} placeholder="YYYY-MM-DD or a note" onChange={(event) => setDate(event.target.value)} /></label>
+          <label>Creation Date<input value={date} placeholder="YYYY-MM-DD or a note" onChange={(event) => setDate(event.target.value)} /></label>
           <label>Website<input type="url" value={url} placeholder="https://example.com" onChange={(event) => setUrl(event.target.value)} /></label>
-          <label className="span-two">Tags<input value={tags} placeholder="work, finance" onChange={(event) => setTags(event.target.value)} /></label>
+          <label className="span-two">Tags<input value={tags} placeholder="game, finance (use comma to separate tags)" onChange={(event) => setTags(event.target.value)} /></label>
         </div>
         <div className="custom-fields-heading">
-          <div><h3>Custom fields</h3><p>Values are encrypted with the rest of the vault.</p></div>
+          <div><h3>Custom fields</h3><p>Add your custom information.</p></div>
           <button type="button" className="button-secondary button-small" onClick={() => setFields((current) => [...current, { key: '', value: '' }])}>Add field</button>
         </div>
         {fields.map((field, index) => (

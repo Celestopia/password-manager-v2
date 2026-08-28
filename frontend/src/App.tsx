@@ -18,7 +18,9 @@ function errorMessage(error: unknown): string {
 
 function formatDate(value: string): string {
   const parsed = new Date(value)
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString()
+  if (Number.isNaN(parsed.valueOf())) return value
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`
 }
 
 export function App() {
@@ -321,7 +323,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand"><span className="brand-symbol">◆</span><div><strong>Password Manager v2</strong><span title={status.vault_path ?? ''}>{status.vault_path}</span></div></div>
+        <div className="brand"><span className="brand-symbol">◆</span><strong>Password Manager v2</strong></div>
         <div className="topbar-actions">
           <button className="button-quiet" onClick={() => setPasswordDialog(true)}>Change master password</button>
           <button className="button-secondary" onClick={() => void lockVault()} disabled={busy}>Lock vault</button>
@@ -331,7 +333,7 @@ export function App() {
       <div className="workspace">
         <aside className="records-pane">
           <div className="records-toolbar">
-            <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search passwords" value={query} placeholder="Search passwords" onChange={(event) => setQuery(event.target.value)} /></label>
+            <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" onChange={(event) => setQuery(event.target.value)} /></label>
             <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })}>+ Add</button>
           </div>
           <div className="records-caption"><span>{filteredRecords.length} of {records.length} entries</span></div>
@@ -345,7 +347,7 @@ export function App() {
           </div>
         </aside>
         <section className="detail-pane">
-          {!details ? <div className="empty-detail"><div className="empty-vault-icon">◇</div><h2>{records.length ? 'Select an entry' : 'Add your first password'}</h2><p>{records.length ? 'Choose a password from the list to view its details.' : 'Create a record to begin filling this encrypted vault.'}</p>{!records.length && <button className="button-primary" onClick={() => setRecordDialog({ mode: 'add' })}>Add password</button>}</div> : <>
+          {!details ? <div className="empty-detail"><div className="empty-vault-icon">◇</div><h2>{records.length ? 'Select an entry' : 'Add your first password'}</h2><p>{records.length ? 'Choose an account from the list to view its details.' : 'Create a record to begin filling this encrypted vault.'}</p>{!records.length && <button className="button-primary" onClick={() => setRecordDialog({ mode: 'add' })}>Add password</button>}</div> : <>
             <div className="detail-heading"><div className="detail-title"><p className="eyebrow">Password entry</p><h1>{details.account}</h1><p>{details.username || details.mail || 'No username'}</p></div><div className="detail-actions"><button className="button-secondary" onClick={() => void editRecord()} disabled={busy}>Edit</button><button className="button-danger" onClick={() => void deleteRecord()} disabled={busy}>Delete</button></div></div>
             <div className="detail-grid">
               <article className="detail-card secret-card"><div className="field-heading"><span>Password</span>{details.has_password && <button className="button-quiet" onClick={() => revealedPassword === null ? void revealPassword() : setRevealedPassword(null)}>{revealedPassword === null ? 'Reveal' : 'Hide'}</button>}</div><div className="secret-row"><code>{details.has_password ? revealedPassword ?? '••••••••••••' : 'No password'}</code>{details.has_password && <button className="button-primary button-small" onClick={() => void copyPassword()}>Copy</button>}</div></article>
