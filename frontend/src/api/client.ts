@@ -1,0 +1,17 @@
+import type { ApiResponse, NativeApi, VaultStatus } from '../types'
+import { mockNativeApi } from './mock'
+
+export class BridgeError extends Error { constructor(public readonly code: string, message: string) { super(message); this.name = 'BridgeError' } }
+let readyPromise: Promise<NativeApi> | null = null
+async function nativeApi(): Promise<NativeApi> {
+  if (window.pywebview?.api) return window.pywebview.api
+  if (import.meta.env.DEV) return mockNativeApi
+  if (readyPromise === null) readyPromise = new Promise((resolve, reject) => { const timeout = window.setTimeout(() => reject(new Error('Desktop bridge did not become ready.')), 10_000); window.addEventListener('pywebviewready', () => { window.clearTimeout(timeout); if (window.pywebview?.api) resolve(window.pywebview.api); else reject(new Error('Desktop bridge is unavailable.')) }, { once: true }) })
+  return readyPromise
+}
+async function invoke<T>(method: keyof NativeApi, ...args: unknown[]): Promise<T> { const bridge = await nativeApi(); const callable = bridge[method] as (...parameters: unknown[]) => Promise<ApiResponse<T>>; const response = await callable(...args); if (!response.ok) throw new BridgeError(response.error.code, response.error.message); return response.data }
+export const api = {
+  status: () => invoke<VaultStatus>('get_status'), chooseVault: () => invoke<{ path: string | null }>('choose_vault'), chooseNewVault: () => invoke<{ path: string | null }>('choose_new_vault_path'), chooseImport: () => invoke<{ path: string | null }>('choose_import_file'), chooseExport: (format: string) => invoke<{ path: string | null }>('choose_export_file', format),
+  unlock: (path: string, password: string) => invoke<VaultStatus>('unlock_vault', path, password), create: (path: string, password: string, overwrite: boolean, memoryMiB: number) => invoke<VaultStatus>('create_vault', path, password, overwrite, memoryMiB), lock: () => invoke<VaultStatus>('lock_vault'), list: (query: string) => invoke<import('../types').RecordSummary[]>('list_records', query), details: (id: string) => invoke<import('../types').RecordDetails>('get_record_details', id), revealPassword: (id: string) => invoke<{ password: string }>('reveal_password', id), copyPassword: (id: string) => invoke<{ clear_after_seconds: number }>('copy_password', id), revealCustomFields: (id: string) => invoke<import('../types').CustomField[]>('reveal_custom_fields', id), addRecord: (values: unknown) => invoke<import('../types').RecordSummary>('add_record', values), updateRecord: (id: string, values: unknown) => invoke<import('../types').RecordSummary>('update_record', id, values), deleteRecord: (id: string) => invoke<import('../types').RecordSummary>('delete_record', id), importJsonl: (path: string, replace: boolean) => invoke<{ imported_count: number }>('import_jsonl', path, replace), exportRecords: (path: string, format: string) => invoke<{ path: string; format: string }>('export_records', path, format, true), changePassword: (current: string, next: string) => invoke<{ changed: boolean }>('change_master_password', current, next), headerInfo: () => invoke<Record<string, unknown>>('get_header_info'),
+}
+

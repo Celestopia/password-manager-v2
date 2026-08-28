@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "password-manager-v2"
+version = "0.1.0"
+description = "Windows-only offline password manager with a web frontend"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "argon2-cffi>=25.1,<26",
+    "cryptography>=47,<48",
+    "pywebview>=6,<7",
+]
+
+[project.scripts]
+pm-v2 = "password_manager_cli.cli:main"
+pm-gui-v2 = "password_manager_desktop.app:main"
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.19,<2",
+    "pyinstaller>=6.20,<7",
+    "pytest>=9,<10",
+    "pytest-cov>=7,<8",
+    "ruff>=0.14,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --basetemp=.pytest-tmp"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["password_manager_cli", "password_manager_core", "password_manager_desktop"]

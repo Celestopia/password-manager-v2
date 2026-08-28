@@ -1,0 +1,48 @@
+import type { ApiResponse, CustomField, NativeApi, RecordDetails, RecordSummary, VaultStatus } from '../types'
+
+type MockRecord = RecordSummary & { password: string; custom_fields: CustomField[]; created_at: string }
+let unlocked = false
+const demoRecords = (): MockRecord[] => [{ id: 'demo-record', account: 'Example Account', username: 'demo@example.com', password: 'demo-password', phonenumber: '', mail: 'demo@example.com', date: '2026-08', url: 'https://example.com', tags: ['demo'], custom_fields: [{ key: 'Recovery code', value: 'example-only' }], has_custom_fields: true, created_at: '2026-08-28T00:00:00Z', updated_at: '2026-08-28T00:00:00Z' }]
+let records = demoRecords()
+const ok = <T,>(data: T): ApiResponse<T> => ({ ok: true, data })
+const status = (): VaultStatus => ({ unlocked, vault_path: unlocked ? 'C:\\Mock\\vault.pmdb' : null, record_count: unlocked ? records.length : 0 })
+const summary = (record: MockRecord): RecordSummary => ({
+  id: record.id,
+  account: record.account,
+  username: record.username,
+  phonenumber: record.phonenumber,
+  mail: record.mail,
+  date: record.date,
+  url: record.url,
+  tags: record.tags,
+  updated_at: record.updated_at,
+  has_custom_fields: record.has_custom_fields,
+})
+
+export const mockNativeApi: NativeApi = {
+  async get_status() { return ok(status()) },
+  async choose_vault() { return ok({ path: 'C:\\Mock\\vault.pmdb' }) },
+  async choose_new_vault_path() { return ok({ path: 'C:\\Mock\\new-vault.pmdb' }) },
+  async choose_import_file() { return ok({ path: 'C:\\Mock\\import.jsonl' }) },
+  async choose_export_file(format) { return ok({ path: `C:\\Mock\\passwords.${format}` }) },
+  async unlock_vault() { unlocked = true; return ok(status()) },
+  async create_vault() { unlocked = true; records = []; return ok(status()) },
+  async lock_vault() { unlocked = false; return ok(status()) },
+  async list_records(query) { const needle = query.toLocaleLowerCase(); return ok(records.filter((record) => record.account.toLocaleLowerCase().includes(needle)).map(summary)) },
+  async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), created_at: record.created_at, has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
+  async reveal_password(recordId) { return ok({ password: records.find((item) => item.id === recordId)!.password }) },
+  async copy_password() { return ok({ clear_after_seconds: 30 }) },
+  async reveal_custom_fields(recordId) { return ok(records.find((item) => item.id === recordId)!.custom_fields) },
+  async add_record(values) { const now = new Date().toISOString(); const record: MockRecord = { ...values, password: values.password ?? '', id: crypto.randomUUID(), created_at: now, updated_at: now, has_custom_fields: values.custom_fields.length > 0 }; records.push(record); return ok(summary(record)) },
+  async update_record(recordId, values) { const record = records.find((item) => item.id === recordId)!; Object.assign(record, values); if (values.password_change !== undefined) record.password = values.password_change; record.has_custom_fields = record.custom_fields.length > 0; record.updated_at = new Date().toISOString(); return ok(summary(record)) },
+  async delete_record(recordId) { const index = records.findIndex((item) => item.id === recordId); const [record] = records.splice(index, 1); return ok(summary(record)) },
+  async import_jsonl() { return ok({ imported_count: 0 }) },
+  async export_records(path, format) { return ok({ path, format }) },
+  async change_master_password() { return ok({ changed: true }) },
+  async get_header_info() { return ok({ version: 1, format: 'jsonl', cipher: { name: 'chacha20-poly1305' } }) },
+}
+
+export function resetMockNativeApi() {
+  unlocked = false
+  records = demoRecords()
+}
