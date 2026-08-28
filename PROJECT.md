@@ -101,6 +101,12 @@ refresh when required.
 Production assets use relative URLs and a Content Security Policy with
 `connect-src 'none'`. Stored website values are text, not navigation targets.
 pywebview runs with debug mode disabled and the Edge Chromium backend selected.
+At desktop window sizes, the detail pane is constrained to the available
+viewport: its card grid uses fixed tracks, and overflowing record or custom-field
+content scrolls inside the owning card rather than expanding the whole pane.
+Vite development mode permits inline styles because its hot-reload client injects
+CSS through a `<style>` element; production output keeps the stricter external-
+style policy.
 
 ### 3.5 CLI
 
@@ -357,4 +363,3 @@ Keep contracts and documentation synchronized:
 
 Review [SECURITY.md](SECURITY.md) before modifying bridge exposure, secret
 lifecycle, cryptographic parameters, import/export behavior, or platform scope.
-

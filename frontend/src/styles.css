@@ -78,25 +78,29 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .records-footer { display: flex; align-items: center; justify-content: space-between; padding: .65rem .75rem; border-top: 1px solid #e8eaf0; background: #fbfbfd; font-size: .72rem; }
 .export-group { display: flex; align-items: center; gap: .1rem; color: #9298a7; }
 
-.detail-pane { min-width: 0; overflow: auto; padding: clamp(1.5rem, 4vw, 3.5rem); }
+.detail-pane { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: clamp(1rem, 2.5vw, 2rem); }
 .empty-detail { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #7c8395; text-align: center; }
+.detail-pane > .empty-detail { grid-row: 1 / -1; }
 .empty-detail h2 { margin: 1rem 0 .3rem; color: #30364a; }
 .empty-detail p { margin: 0 0 1.2rem; }
 .empty-vault-icon { width: 72px; height: 72px; display: grid; place-items: center; border: 1px solid #dcdfeb; border-radius: 22px; color: #7770dc; background: #fff; font-size: 2rem; box-shadow: 0 10px 30px rgba(40, 45, 70, .08); }
-.detail-heading { display: flex; align-items: center; gap: 1rem; max-width: 940px; margin: 0 auto 1.6rem; }
+.detail-heading { width: 100%; display: flex; align-items: center; gap: 1rem; max-width: 940px; margin: 0 auto clamp(.8rem, 2vh, 1.25rem); }
 .large-avatar { width: 60px; height: 60px; border-radius: 16px; font-size: 1.35rem; }
 .detail-heading > div:nth-child(2) { min-width: 0; }
 .detail-heading .eyebrow { margin: 0 0 .25rem; }
 .detail-heading h1 { margin: 0; overflow: hidden; color: #171c2f; font-size: 1.8rem; letter-spacing: -.03em; text-overflow: ellipsis; white-space: nowrap; }
 .detail-heading p:last-child { margin: .25rem 0 0; color: #7e8598; }
 .detail-actions { display: flex; gap: .5rem; margin-left: auto; }
-.detail-grid { max-width: 940px; display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin: 0 auto; }
-.detail-card { padding: 1.25rem; border: 1px solid #e0e3ec; border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(30, 37, 60, .035); }
+.detail-grid { width: 100%; height: 100%; min-height: 0; max-width: 940px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(118px, .6fr) minmax(0, 2fr) minmax(146px, .85fr); gap: .9rem; margin: 0 auto; }
+.detail-card { min-width: 0; min-height: 0; padding: 1.25rem; overflow: auto; border: 1px solid #e0e3ec; border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(30, 37, 60, .035); scrollbar-gutter: stable; }
 .secret-card { grid-column: 1 / -1; }
+.identity-card, .custom-fields-card { display: flex; flex-direction: column; overflow: hidden; }
+.identity-card > dl, .custom-fields-card > dl { flex: 1 1 auto; }
 .field-heading { display: flex; align-items: center; justify-content: space-between; color: #757c90; font-size: .74rem; font-weight: 800; letter-spacing: .055em; text-transform: uppercase; }
 .secret-row { display: flex; align-items: center; gap: 1rem; margin-top: .65rem; }
 .secret-row code { min-width: 0; flex: 1; overflow-wrap: anywhere; color: #20263a; font-family: "Cascadia Code", Consolas, monospace; font-size: 1.05rem; }
-.detail-card dl { margin: 0; }
+.detail-card dl { min-height: 0; margin: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+.custom-fields-card .field-heading { flex: 0 0 auto; margin-bottom: .5rem; }
 .detail-card dl > div { padding: .68rem 0; border-bottom: 1px solid #edf0f5; }
 .detail-card dl > div:first-child { padding-top: 0; }
 .detail-card dl > div:last-child { padding-bottom: 0; border: 0; }
@@ -133,11 +137,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 
 @media (max-width: 800px) {
   .workspace { grid-template-columns: minmax(285px, 42%) 1fr; }
-  .detail-pane { padding: 1.25rem; }
-  .detail-heading { align-items: flex-start; flex-wrap: wrap; }
-  .detail-actions { width: 100%; margin-left: 76px; }
-  .detail-grid { grid-template-columns: 1fr; }
-  .secret-card, .metadata-card { grid-column: auto; }
+  .detail-pane { padding: 1rem; }
   .topbar-actions .button-quiet { display: none; }
 }
 
@@ -146,6 +146,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .records-pane { min-height: 50vh; border-right: 0; border-bottom: 1px solid #dfe3ec; }
   .record-list { max-height: 45vh; }
   .detail-pane { min-height: 50vh; overflow: visible; }
+  .detail-grid { height: auto; grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(180px, 42vh)); }
+  .secret-card, .metadata-card { grid-column: auto; }
   .brand div span { max-width: 180px; }
   .welcome-card { padding: 2.1rem 1.3rem; }
   .welcome-actions, .form-grid { grid-template-columns: 1fr; flex-direction: column; }
