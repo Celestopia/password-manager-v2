@@ -311,7 +311,7 @@ export function App() {
           </div>
           <div className="records-caption"><span>{filteredRecords.length} of {records.length} entries</span></div>
           <div className="record-list">
-            {filteredRecords.map((record) => <button key={record.id} className={`record-card ${selectedId === record.id ? 'selected' : ''}`} onClick={() => void selectRecord(record.id)}><span className="account-avatar">{record.account.slice(0, 1).toLocaleUpperCase()}</span><span className="record-card-copy"><strong>{record.account}</strong><small>{record.username || record.mail || 'No username'}</small><span className="tag-line">{record.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</span></span><span className="chevron">›</span></button>)}
+            {filteredRecords.map((record) => <button key={record.id} className={`record-card ${selectedId === record.id ? 'selected' : ''}`} onClick={() => void selectRecord(record.id)}><span className="record-card-copy"><strong>{record.account}</strong><small>{record.username || record.mail || 'No username'}</small><span className="tag-line">{record.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</span></span><span className="chevron">›</span></button>)}
             {filteredRecords.length === 0 && <div className="empty-list"><span>◇</span><p>{records.length ? 'No entries match your search.' : 'Your vault is empty.'}</p></div>}
           </div>
           <div className="records-footer">

@@ -30,7 +30,9 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
 
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    await user.click(await screen.findByRole('button', { name: /Example Account/ }))
+    const recordButton = await screen.findByRole('button', { name: /Example Account/ })
+    expect(recordButton.querySelector('.account-avatar')).toBeNull()
+    await user.click(recordButton)
     expect(await screen.findByText('••••••••••••')).toBeInTheDocument()
     expect(screen.queryByText('demo-password')).not.toBeInTheDocument()
 
