@@ -19,3 +19,9 @@ def frontend_index() -> Path:
     """Return the production Vite index included with the desktop app."""
 
     return application_root() / "frontend" / "dist" / "index.html"
+
+
+def application_icon() -> Path:
+    """Return the Windows application icon for source and packaged runs."""
+
+    return application_root() / "assets" / "pm-icon.ico"

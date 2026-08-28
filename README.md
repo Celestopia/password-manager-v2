@@ -110,6 +110,12 @@ entire `PasswordManagerV2` directory together because the executable depends on
 its adjacent `_internal` directory. The build is not code-signed and does not
 include an installer or the evergreen WebView2 runtime.
 
+The executable and desktop window use `assets\pm-icon.ico`. The editable vector
+source is retained at `assets\pm-icon.svg`.
+After rebuilding the same output path, the build script asks Windows Shell to
+refresh that executable's cached icon. An already-open Explorer window may still
+need a normal **Refresh** action to repaint immediately.
+
 Vaults (`*.pmdb`), encrypted backups (`*.pmdb.bak`), lock files, plaintext
 imports/exports, dependency directories, and build outputs are ignored by Git.
 
@@ -121,4 +127,3 @@ imports/exports, dependency directories, and build outputs are ignored by Git.
   and residual risks.
 - [LESSONS.md](LESSONS.md) records durable repository-specific maintenance
   rules.
-

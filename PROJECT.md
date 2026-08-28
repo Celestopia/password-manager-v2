@@ -33,6 +33,7 @@ password_manager_v2/
 |   |-- src/components/           Shared presentation components
 |   `-- src/features/vault/       Vault and record dialogs
 |-- packaging/                    PyInstaller entry point and onedir spec
+|-- assets/                       SVG source artwork and Windows ICO resource
 |-- scripts/                      Bootstrap, verification, and build commands
 |-- src/
 |   |-- password_manager_core/    Crypto, schema, locking, and persistence
@@ -89,7 +90,9 @@ typing an arbitrary path in JavaScript is rejected.
 `WindowsClipboard` writes copied passwords without returning them to the
 renderer. It clears after 30 seconds only if the clipboard still contains the
 application-managed value. `resources.py` resolves the built frontend from the
-repository in source runs and PyInstaller's `_MEIPASS` in packaged runs.
+repository in source runs and PyInstaller's `_MEIPASS` in packaged runs. It also
+resolves the application ICO so source windows and packaged windows use the same
+visual identity.
 
 ### 3.4 Frontend
 
@@ -316,8 +319,10 @@ project packages. [LESSONS.md](LESSONS.md) records this repository rule.
 The packaged executable is
 `release/PasswordManagerV2/PasswordManagerV2.exe`. Its `_internal` directory
 contains Python, WebView2 loader assemblies, and frontend assets and must remain
-adjacent. The build does not create an installer, ship the evergreen WebView2
-runtime, sign the executable, or publish artifacts.
+adjacent. PyInstaller embeds `assets/pm-icon.ico` into the executable and bundles
+the same file for the pywebview window icon. The build does not create an
+installer, ship the evergreen WebView2 runtime, sign the executable, or publish
+artifacts.
 
 ## 10. Verification strategy
 
@@ -330,7 +335,11 @@ and password confirmation.
 `scripts/verify.ps1` also runs Ruff, strict Mypy, TypeScript compilation, ESLint,
 Vitest, a Vite production build, and a source Edge-backend smoke test. The build
 script packages the application and runs the packaged resource/backend smoke
-test.
+test in a hidden process, waits for its real exit code, and leaves no background
+application instance holding packaged files open. After a successful build, it
+sends path-scoped item and directory update notifications to Windows Shell so
+Explorer re-reads the replaced executable's embedded icon without clearing the
+user's global icon cache or restarting Explorer.
 
 Keep contracts and documentation synchronized:
 

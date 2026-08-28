@@ -9,7 +9,7 @@ from collections.abc import Sequence
 import webview
 
 from .bridge import DesktopBridge
-from .resources import frontend_index
+from .resources import application_icon, frontend_index
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -21,6 +21,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     index = frontend_index()
     if not index.is_file():
         raise FileNotFoundError(f"Frontend build is missing: {index}. Run npm run build first.")
+    icon = application_icon()
+    if not icon.is_file():
+        raise FileNotFoundError(f"Application icon is missing: {icon}.")
     if arguments == ["--smoke-test"]:
         importlib.import_module("webview.platforms.edgechromium")
         return 0
@@ -42,7 +45,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise RuntimeError("Unable to create the desktop window.")
     bridge._attach_window(window)
     window.events.closed += bridge._shutdown
-    webview.start(gui="edgechromium", debug=False, private_mode=True)
+    webview.start(gui="edgechromium", debug=False, private_mode=True, icon=str(icon))
     return 0
 
 
