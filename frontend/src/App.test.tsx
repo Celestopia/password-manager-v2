@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
 import { mockNativeApi, resetMockNativeApi } from './api/mock'
+import type { RecordDetails, RecordSummary } from './types'
 
 describe('App', () => {
   beforeEach(() => resetMockNativeApi())
@@ -161,5 +162,50 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
 
     expect(await screen.findByPlaceholderText('Search accounts')).toHaveAccessibleName('Search accounts')
+  })
+
+  it('sorts and filters account summaries without losing the selected account', async () => {
+    const summaries: RecordSummary[] = [
+      { id: 'beta', account: 'Beta', username: 'beta-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-30T00:00:00Z', has_custom_fields: false },
+      { id: 'ten', account: 'Account 10', username: 'ten-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-01T00:00:00Z', has_custom_fields: false },
+      { id: 'two', account: 'Account 2', username: 'two-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-15T00:00:00Z', has_custom_fields: false },
+    ]
+    vi.spyOn(mockNativeApi, 'list_records').mockResolvedValue({ ok: true, data: summaries })
+    vi.spyOn(mockNativeApi, 'get_record_details').mockImplementation(async (recordId) => {
+      const summary = summaries.find(({ id }) => id === recordId)!
+      const details: RecordDetails = {
+        ...summary,
+        created_at: summary.updated_at,
+        has_password: true,
+        custom_fields: [],
+      }
+      return { ok: true, data: details }
+    })
+    const listedAccounts = () => Array.from(document.querySelectorAll('.record-card strong'))
+      .map((element) => element.textContent)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    await screen.findByRole('button', { name: /Beta/ })
+    expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])
+    await user.click(screen.getByRole('button', { name: /Beta/ }))
+
+    await user.selectOptions(screen.getByLabelText('Sort accounts by'), 'account')
+    expect(listedAccounts()).toEqual(['Account 2', 'Account 10', 'Beta'])
+    expect(screen.getByRole('button', { name: /Beta/ })).toHaveClass('selected')
+
+    await user.click(screen.getByRole('button', { name: 'Alphabet: A to Z' }))
+    expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])
+
+    await user.selectOptions(screen.getByLabelText('Sort accounts by'), 'updated')
+    expect(screen.getByRole('button', { name: 'Last modified: newest first' })).toBeInTheDocument()
+    expect(listedAccounts()).toEqual(['Beta', 'Account 2', 'Account 10'])
+
+    await user.type(screen.getByLabelText('Search accounts'), 'account')
+    expect(listedAccounts()).toEqual(['Account 2', 'Account 10'])
   })
 })

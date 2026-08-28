@@ -57,7 +57,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .search-box:focus-within { border-color: #8179eb; box-shadow: 0 0 0 3px rgba(79, 70, 216, .1); }
 .search-box input { width: 100%; height: 38px; padding: 0; border: 0; outline: 0; background: transparent; color: #242a3e; }
 .add-button { flex: 0 0 auto; }
-.records-caption { display: flex; justify-content: space-between; padding: .25rem 1.1rem .65rem; color: #8b92a3; font-size: .72rem; }
+.records-caption { display: flex; align-items: center; justify-content: space-between; gap: .45rem; flex-wrap: wrap; padding: .25rem 1.1rem .65rem; color: #8b92a3; font-size: .72rem; }
+.sort-controls { display: flex; align-items: center; gap: .3rem; margin-left: auto; }
+.sort-select, .sort-direction-button { height: 30px; border: 1px solid #dfe3ed; border-radius: 7px; color: #4f566b; background: #fff; }
+.sort-select { max-width: 112px; padding: 0 1.55rem 0 .5rem; }
+.sort-direction-button { width: 30px; display: grid; place-items: center; padding: 0; font-size: .9rem; font-weight: 800; }
+.sort-select:hover, .sort-direction-button:hover { border-color: #bbb7ed; color: #4338ca; background: #f8f7ff; }
 .record-list { min-height: 0; flex: 1; overflow: auto; padding: 0 .6rem .75rem; }
 .record-card { width: 100%; display: flex; align-items: center; gap: .75rem; margin: .12rem 0; padding: .72rem .65rem; border: 1px solid transparent; border-radius: 11px; background: transparent; text-align: left; }
 .record-card:hover { background: #f6f7fb; }

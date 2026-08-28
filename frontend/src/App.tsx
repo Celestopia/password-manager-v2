@@ -4,6 +4,8 @@ import { api } from './api/client'
 import { ExportDialog } from './features/vault/ExportDialog'
 import { PasswordDialog } from './features/vault/PasswordDialog'
 import { RecordDialog } from './features/vault/RecordDialog'
+import { filterAndSortRecords, sortDirectionLabel } from './features/vault/recordSorting'
+import type { RecordSortField, SortDirection } from './features/vault/recordSorting'
 import { VaultDialog } from './features/vault/VaultDialog'
 import type { CustomField, RecordDetails, RecordInput, RecordSummary, VaultStatus } from './types'
 
@@ -29,6 +31,8 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [details, setDetails] = useState<RecordDetails | null>(null)
   const [query, setQuery] = useState('')
+  const [sortField, setSortField] = useState<RecordSortField>('vault')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('ascending')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [errorRevision, setErrorRevision] = useState(0)
@@ -100,11 +104,11 @@ export function App() {
     return () => window.clearTimeout(timeout)
   }, [error, errorRevision])
 
-  const filteredRecords = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase()
-    if (!needle) return records
-    return records.filter((record) => record.account.toLocaleLowerCase().includes(needle))
-  }, [query, records])
+  const visibleRecords = useMemo(
+    () => filterAndSortRecords(records, query, sortField, sortDirection),
+    [query, records, sortDirection, sortField],
+  )
+  const directionLabel = sortDirectionLabel(sortField, sortDirection)
 
   const chooseVault = async (mode: 'unlock' | 'create') => {
     setError('')
@@ -345,10 +349,34 @@ export function App() {
             <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" onChange={(event) => setQuery(event.target.value)} /></label>
             <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })}>+ Add</button>
           </div>
-          <div className="records-caption"><span>{filteredRecords.length} of {records.length} entries</span></div>
+          <div className="records-caption">
+            <span>{visibleRecords.length} of {records.length} entries</span>
+            <div className="sort-controls">
+              <span>Sort:</span>
+              <select
+                className="sort-select"
+                aria-label="Sort accounts by"
+                value={sortField}
+                onChange={(event) => setSortField(event.target.value as RecordSortField)}
+              >
+                <option value="account">alphabet</option>
+                <option value="vault">default</option>
+                <option value="updated">last modified</option>
+              </select>
+              <button
+                type="button"
+                className="sort-direction-button"
+                aria-label={directionLabel}
+                title={directionLabel}
+                onClick={() => setSortDirection((current) => current === 'ascending' ? 'descending' : 'ascending')}
+              >
+                {sortDirection === 'ascending' ? '↑' : '↓'}
+              </button>
+            </div>
+          </div>
           <div className="record-list">
-            {filteredRecords.map((record) => <button key={record.id} className={`record-card ${selectedId === record.id ? 'selected' : ''}`} onClick={() => void selectRecord(record.id)}><span className="record-card-copy"><strong>{record.account}</strong><small>{record.username || record.mail || 'No username'}</small><span className="tag-line">{record.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</span></span><span className="chevron">›</span></button>)}
-            {filteredRecords.length === 0 && <div className="empty-list"><span>◇</span><p>{records.length ? 'No entries match your search.' : 'Your vault is empty.'}</p></div>}
+            {visibleRecords.map((record) => <button key={record.id} className={`record-card ${selectedId === record.id ? 'selected' : ''}`} onClick={() => void selectRecord(record.id)}><span className="record-card-copy"><strong>{record.account}</strong><small>{record.username || record.mail || 'No username'}</small><span className="tag-line">{record.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</span></span><span className="chevron">›</span></button>)}
+            {visibleRecords.length === 0 && <div className="empty-list"><span>◇</span><p>{records.length ? 'No entries match your search.' : 'Your vault is empty.'}</p></div>}
           </div>
           <div className="records-footer">
             <div className="file-action-group"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()}>JSONL</button></div>
