@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import struct
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 
 from password_manager_core.crypto import MAGIC, KdfProfile, decrypt_payload, encrypt_payload, split_vault
 from password_manager_core.exceptions import (
+    ImportConflictError,
     PlaintextConfirmationError,
     RecordValidationError,
     VaultAuthenticationError,
@@ -113,6 +115,65 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
 
     assert jsonl_to_records(export_path.read_bytes())[0]["account"] == "Renamed"
     assert load_vault(path, MASTER_PASSWORD).records[0]["password"] == "new secret"
+
+
+def test_import_merges_new_records_and_skips_identical_records(tmp_path: Path) -> None:
+    path = tmp_path / "merge.pmdb"
+    source = tmp_path / "import.jsonl"
+    session = VaultSession()
+    first = new_record(account="Existing", username="alice", password="secret")
+    second = new_record(account="New", username="bob", password="new secret")
+    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+
+    source.write_bytes(records_to_jsonl([first]))
+    assert session.import_jsonl(source) == {"imported_count": 1, "skipped_count": 0}
+    vault_before_noop = path.read_bytes()
+    backup_before_noop = path.with_suffix(".pmdb.bak").read_bytes()
+
+    source.write_bytes(records_to_jsonl([first]))
+    assert session.import_jsonl(source) == {"imported_count": 0, "skipped_count": 1}
+    assert path.read_bytes() == vault_before_noop
+    assert path.with_suffix(".pmdb.bak").read_bytes() == backup_before_noop
+
+    source.write_bytes(records_to_jsonl([first, second]))
+    assert session.import_jsonl(source) == {"imported_count": 1, "skipped_count": 1}
+    assert {record["id"] for record in session.list_records()} == {first["id"], second["id"]}
+
+
+def test_import_conflict_rejects_the_entire_merge(tmp_path: Path) -> None:
+    path = tmp_path / "conflict-import.pmdb"
+    source = tmp_path / "conflict.jsonl"
+    session = VaultSession()
+    existing = new_record(account="Existing", password="secret")
+    not_imported = new_record(account="Must not be imported", password="secret")
+    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    source.write_bytes(records_to_jsonl([existing]))
+    session.import_jsonl(source)
+    vault_before_conflict = path.read_bytes()
+
+    conflicting = copy.deepcopy(existing)
+    conflicting["account"] = "Changed content"
+    source.write_bytes(records_to_jsonl([conflicting, not_imported]))
+    with pytest.raises(ImportConflictError, match=existing["id"]):
+        session.import_jsonl(source)
+
+    assert path.read_bytes() == vault_before_conflict
+    assert [record["id"] for record in session.list_records()] == [existing["id"]]
+
+
+def test_import_rejects_duplicate_ids_within_the_source_file(tmp_path: Path) -> None:
+    path = tmp_path / "invalid-import.pmdb"
+    source = tmp_path / "duplicates.jsonl"
+    duplicate = new_record(account="Duplicate", password="secret")
+    encoded = json.dumps(duplicate, ensure_ascii=False, separators=(",", ":"))
+    source.write_text(f"{encoded}\n{encoded}\n", encoding="utf-8")
+    session = VaultSession()
+    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+
+    with pytest.raises(RecordValidationError, match="Duplicate record id"):
+        session.import_jsonl(source)
+
+    assert session.list_records() == []
 
 
 def test_export_reauthentication_locks_session_after_one_failure(tmp_path: Path) -> None:

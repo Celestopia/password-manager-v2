@@ -29,10 +29,13 @@ class RecordLookupError(PasswordManagerError):
     """Raised when a record lookup has zero or multiple results."""
 
 
+class ImportConflictError(PasswordManagerError):
+    """Raised when an imported record ID has different existing content."""
+
+
 class SessionStateError(PasswordManagerError):
     """Raised when an operation is invalid for the current vault session."""
 
 
 class PlaintextConfirmationError(PasswordManagerError):
     """Raised when plaintext export was not explicitly acknowledged."""
-

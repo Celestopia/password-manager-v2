@@ -40,7 +40,7 @@ export const mockNativeApi: NativeApi = {
   async add_record(values) { const now = new Date().toISOString(); const record: MockRecord = { ...values, password: values.password ?? '', id: crypto.randomUUID(), created_at: now, updated_at: now, has_custom_fields: values.custom_fields.length > 0 }; records.push(record); return ok(summary(record)) },
   async update_record(recordId, values) { const record = records.find((item) => item.id === recordId)!; Object.assign(record, values); if (values.password_change !== undefined) record.password = values.password_change; record.has_custom_fields = record.custom_fields.length > 0; record.updated_at = new Date().toISOString(); return ok(summary(record)) },
   async delete_record(recordId) { const index = records.findIndex((item) => item.id === recordId); const [record] = records.splice(index, 1); return ok(summary(record)) },
-  async import_jsonl() { return ok({ imported_count: 0 }) },
+  async import_jsonl() { return ok({ imported_count: 0, skipped_count: 0 }) },
   async export_records(path, format) { if (!exportAuthorized) return failure('PERMISSION_DENIED', 'Plaintext export requires fresh master-password authorization.'); exportAuthorized = false; return ok({ path, format }) },
   async change_master_password() { return ok({ changed: true }) },
   async get_header_info() { return ok({ version: 1, format: 'jsonl', cipher: { name: 'chacha20-poly1305' } }) },

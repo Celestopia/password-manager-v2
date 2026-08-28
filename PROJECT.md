@@ -109,6 +109,9 @@ refresh when required.
 
 Production assets use relative URLs and a Content Security Policy with
 `connect-src 'none'`. Stored website values are text, not navigation targets.
+Global success and error banners share a five-second dismissal lifecycle and
+remain manually dismissible; inline form validation persists until corrected or
+the dialog closes.
 pywebview runs with debug mode disabled and the Edge Chromium backend selected.
 At desktop window sizes, the detail pane is constrained to the available
 viewport: its card grid uses fixed tracks, and overflowing record or custom-field
@@ -201,10 +204,12 @@ Unknown or missing fields, invalid scalar types, duplicate custom-field keys,
 and duplicate record IDs are rejected. Search is a case-insensitive substring
 match on `account` that preserves source order.
 
-JSONL import expects one complete record per non-empty line. Merge concatenates
-existing and imported records, then validates the entire collection. Replace
-validates the import and replaces all records atomically. CSV and JSONL exports
-are plaintext and include passwords and custom-field values. JSONL uses
+JSONL import expects one complete record per non-empty line and supports merge
+only. Duplicate IDs inside the import are invalid. An imported record whose ID
+and normalized content match an existing record is skipped; the same ID with
+different content aborts the entire import as a conflict. Only new IDs are
+added, and an all-identical import does not rewrite the vault. CSV and JSONL
+exports are plaintext and include passwords and custom-field values. JSONL uses
 deterministic key ordering; CSV stores tags and custom fields as JSON strings.
 
 ## 6. State and data flows
@@ -297,6 +302,7 @@ Stable failure codes are:
 | `VAULT_FORMAT_INVALID` | Container or KDF parameters are invalid. |
 | `RECORD_INVALID` | Record input violates the schema. |
 | `RECORD_NOT_FOUND` | Selected record is absent. |
+| `IMPORT_CONFLICT` | An imported ID exists with different record content. |
 | `SESSION_STATE_INVALID` | Operation conflicts with current lock state. |
 | `PLAINTEXT_CONFIRMATION_REQUIRED` | Export lacks acknowledgement. |
 | `FILE_NOT_FOUND` / `FILE_EXISTS` | Filesystem precondition failed. |
@@ -345,9 +351,10 @@ artifacts.
 Python tests cover authentication, schemas, encrypted writes, backups,
 conflicts, fixed-format compatibility, malicious KDF bounds, locking, KDF cost
 retention, salt/nonce rotation, rollback, minimal bridge exposure, one-shot path
-grants, and export reauthentication. Frontend tests cover locked state, unlock,
-password masking, reveal, password confirmation, guarded export, and lockout
-after one failed export password attempt.
+grants, merge-only imports, and export reauthentication. Frontend tests cover
+locked state, unlock, password masking, reveal, password confirmation, guarded
+import/export, five-second global messages, and lockout after one failed export
+password attempt.
 
 `scripts/verify.ps1` also runs Ruff, strict Mypy, TypeScript compilation, ESLint,
 Vitest, a Vite production build, and a source Edge-backend smoke test. The build

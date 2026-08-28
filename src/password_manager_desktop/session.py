@@ -11,6 +11,7 @@ from typing import Any, TypeVar
 
 from password_manager_core.crypto import KdfProfile
 from password_manager_core.exceptions import (
+    ImportConflictError,
     PlaintextConfirmationError,
     RecordValidationError,
     SessionStateError,
@@ -256,17 +257,46 @@ class VaultSession:
         deleted = self._mutate(mutate)
         return self._summary(deleted)
 
-    def import_jsonl(self, path: Path, *, replace: bool) -> int:
-        """Import a validated plaintext JSONL file into the authenticated session."""
+    def import_jsonl(self, source: Path) -> dict[str, int]:
+        """Merge validated JSONL records, skipping identical existing IDs."""
 
-        imported = read_import_jsonl(path)
+        imported = read_import_jsonl(source)
+        with self._guard:
+            path, password, profile, fingerprint = self._unlocked_parts()
+            self._assert_disk_unchanged(path, fingerprint)
+            existing_by_id = {record["id"]: record for record in self._records}
+            additions: list[Record] = []
+            conflict_ids: list[str] = []
+            skipped_count = 0
+            for record in imported:
+                existing = existing_by_id.get(record["id"])
+                if existing is None:
+                    additions.append(record)
+                elif existing == record:
+                    skipped_count += 1
+                else:
+                    conflict_ids.append(record["id"])
+            if conflict_ids:
+                preview = ", ".join(conflict_ids[:5])
+                remainder = max(0, len(conflict_ids) - 5)
+                suffix = f" and {remainder} more" if remainder else ""
+                raise ImportConflictError(
+                    f"Import conflicts with {len(conflict_ids)} existing record(s): {preview}{suffix}."
+                )
+            if not additions:
+                return {"imported_count": 0, "skipped_count": skipped_count}
 
-        def mutate(records: list[Record]) -> int:
-            combined = imported if replace else records + imported
-            records[:] = normalize_records(combined)
-            return len(imported)
-
-        return self._mutate(mutate)
+            staged = normalize_records(copy.deepcopy(self._records) + additions)
+            new_fingerprint = write_records(
+                path,
+                staged,
+                password,
+                kdf_profile=profile,
+                expected_fingerprint=fingerprint,
+            )
+            self._records = staged
+            self._fingerprint = new_fingerprint
+            return {"imported_count": len(additions), "skipped_count": skipped_count}
 
     def export_records(self, path: Path, export_format: str, *, confirmed_plaintext: bool) -> None:
         """Write an explicitly acknowledged plaintext export."""

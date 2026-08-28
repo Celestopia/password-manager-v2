@@ -93,6 +93,12 @@ must include all fixed-schema fields, including a unique ID and timestamps:
 {"id":"7be1424d-5c31-4afb-85b5-53a5d8821c15","account":"Example","username":"alice","password":"synthetic-secret","phonenumber":"","mail":"alice@example.test","date":"","url":"https://example.test","custom_fields":[{"key":"PIN","value":"1234"}],"tags":["demo"],"created_at":"2026-08-28T00:00:00Z","updated_at":"2026-08-28T00:00:00Z"}
 ```
 
+Import is merge-only and never replaces the current vault. Records with new IDs
+are added, records that are completely identical to an existing ID are skipped,
+and an existing ID with different content aborts the whole import. Duplicate IDs
+inside the import file are invalid. Successful results report both added and
+skipped counts.
+
 Use only synthetic values in fixtures and examples. Imports and exports are
 plaintext; remove them safely when they are no longer needed.
 
@@ -130,5 +136,3 @@ imports/exports, dependency directories, and build outputs are ignored by Git.
   configuration, implementation decisions, verification, and trade-offs.
 - [SECURITY.md](SECURITY.md) documents the threat model, implemented controls,
   and residual risks.
-- [LESSONS.md](LESSONS.md) records durable repository-specific maintenance
-  rules.

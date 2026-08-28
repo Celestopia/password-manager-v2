@@ -98,7 +98,6 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser = commands.add_parser("import", help="Import a plaintext JSONL file.")
     add_vault_arg(import_parser)
     import_parser.add_argument("input", type=Path)
-    import_parser.add_argument("--replace", action="store_true")
     import_parser.set_defaults(handler=cmd_import)
 
     passwd = commands.add_parser("passwd", help="Change the master password.")
@@ -269,8 +268,11 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def cmd_import(args: argparse.Namespace) -> int:
     source = args.input.expanduser().resolve(strict=True)
-    count = with_unlocked(args, lambda session: session.import_jsonl(source, replace=args.replace))
-    print(f"Imported {count} record(s).")
+    result = with_unlocked(args, lambda session: session.import_jsonl(source))
+    print(
+        f"Imported {result['imported_count']} record(s); "
+        f"skipped {result['skipped_count']} identical record(s)."
+    )
     return 0
 
 

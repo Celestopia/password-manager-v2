@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from password_manager_core.models import new_record, records_to_jsonl
 from password_manager_desktop.bridge import DesktopBridge
 from password_manager_desktop.session import VaultSession
 
@@ -135,3 +136,30 @@ def test_failed_export_reauthentication_locks_and_clears_clipboard(tmp_path: Pat
         "record_count": 0,
     }
     assert clipboard.secret is None
+
+
+def test_bridge_reports_merge_counts_and_import_conflicts(tmp_path: Path) -> None:
+    vault_path = (tmp_path / "bridge-import.pmdb").resolve()
+    import_path = (tmp_path / "records.jsonl").resolve()
+    record = new_record(account="Imported", password="secret")
+    bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
+    bridge._grant(vault_path, "create_vault")
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+
+    import_path.write_bytes(records_to_jsonl([record]))
+    bridge._grant(import_path, "import")
+    assert assert_data(bridge.import_jsonl(str(import_path))) == {
+        "imported_count": 1,
+        "skipped_count": 0,
+    }
+
+    conflicting = dict(record)
+    conflicting["account"] = "Conflicting content"
+    import_path.write_bytes(records_to_jsonl([conflicting]))  # type: ignore[list-item]
+    bridge._grant(import_path, "import")
+    response = bridge.import_jsonl(str(import_path))
+    assert response["ok"] is False
+    assert response["error"] == {
+        "code": "IMPORT_CONFLICT",
+        "message": f"Import conflicts with 1 existing record(s): {record['id']}.",
+    }

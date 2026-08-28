@@ -12,6 +12,7 @@ from typing import Any, TypeVar
 import webview
 
 from password_manager_core.exceptions import (
+    ImportConflictError,
     PasswordManagerError,
     PlaintextConfirmationError,
     RecordLookupError,
@@ -136,14 +137,10 @@ class DesktopBridge:
     def delete_record(self, record_id: object) -> dict[str, object]:
         return self._call(lambda: self._session.delete_record(self._require_string(record_id, "record_id")))
 
-    def import_jsonl(self, path: object, replace: object) -> dict[str, object]:
-        def import_records() -> dict[str, int]:
-            if not isinstance(replace, bool):
-                raise TypeError("replace must be a boolean.")
-            count = self._session.import_jsonl(self._authorized_path(path, "import", consume=True), replace=replace)
-            return {"imported_count": count}
-
-        return self._call(import_records)
+    def import_jsonl(self, path: object) -> dict[str, object]:
+        return self._call(
+            lambda: self._session.import_jsonl(self._authorized_path(path, "import", consume=True))
+        )
 
     def authorize_export(self, master_password: object) -> dict[str, object]:
         def authorize() -> dict[str, bool]:
@@ -324,6 +321,7 @@ class DesktopBridge:
             (VaultFormatError, "VAULT_FORMAT_INVALID"),
             (RecordValidationError, "RECORD_INVALID"),
             (RecordLookupError, "RECORD_NOT_FOUND"),
+            (ImportConflictError, "IMPORT_CONFLICT"),
             (SessionStateError, "SESSION_STATE_INVALID"),
             (PlaintextConfirmationError, "PLAINTEXT_CONFIRMATION_REQUIRED"),
             (FileNotFoundError, "FILE_NOT_FOUND"),

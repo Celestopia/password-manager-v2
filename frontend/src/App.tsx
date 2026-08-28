@@ -10,7 +10,7 @@ import type { CustomField, RecordDetails, RecordInput, RecordSummary, VaultStatu
 type VaultDialogState = { mode: 'unlock' | 'create'; path: string }
 type RecordDialogState = { mode: 'add' } | { mode: 'edit'; initial: RecordDetails; customFields: CustomField[] }
 
-const NOTICE_DISMISS_DELAY_MS = 5_000
+const MESSAGE_DISMISS_DELAY_MS = 5_000
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'An unexpected error occurred.'
@@ -31,7 +31,9 @@ export function App() {
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [errorRevision, setErrorRevision] = useState(0)
   const [notice, setNotice] = useState('')
+  const [noticeRevision, setNoticeRevision] = useState(0)
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null)
   const [recordDialog, setRecordDialog] = useState<RecordDialogState | null>(null)
   const [passwordDialog, setPasswordDialog] = useState(false)
@@ -41,7 +43,14 @@ export function App() {
 
   const showError = (caught: unknown) => {
     setError(errorMessage(caught))
+    setErrorRevision((current) => current + 1)
     setNotice('')
+  }
+
+  const showNotice = (message: string) => {
+    setNotice(message)
+    setNoticeRevision((current) => current + 1)
+    setError('')
   }
 
   const refreshRecords = async (preferredId?: string | null) => {
@@ -81,9 +90,15 @@ export function App() {
 
   useEffect(() => {
     if (!notice) return
-    const timeout = window.setTimeout(() => setNotice(''), NOTICE_DISMISS_DELAY_MS)
+    const timeout = window.setTimeout(() => setNotice(''), MESSAGE_DISMISS_DELAY_MS)
     return () => window.clearTimeout(timeout)
-  }, [notice])
+  }, [notice, noticeRevision])
+
+  useEffect(() => {
+    if (!error) return
+    const timeout = window.setTimeout(() => setError(''), MESSAGE_DISMISS_DELAY_MS)
+    return () => window.clearTimeout(timeout)
+  }, [error, errorRevision])
 
   const filteredRecords = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase()
@@ -112,7 +127,7 @@ export function App() {
       setStatus(nextStatus)
       setVaultDialog(null)
       setRecords(await api.list(''))
-      setNotice(vaultDialog.mode === 'unlock' ? 'Vault unlocked.' : 'Vault created and unlocked.')
+      showNotice(vaultDialog.mode === 'unlock' ? 'Vault unlocked.' : 'Vault created and unlocked.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -131,8 +146,7 @@ export function App() {
       setRevealedPassword(null)
       setRevealedFields(null)
       setExportDialog(null)
-      setNotice('Vault locked and secrets cleared from the session.')
-      setError('')
+      showNotice('Vault locked and secrets cleared from the session.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -163,7 +177,7 @@ export function App() {
       setRevealedPassword(null)
       setRevealedFields(null)
       await refreshRecords(saved.id)
-      setNotice(recordDialog?.mode === 'edit' ? 'Password entry updated.' : 'Password entry added.')
+      showNotice(recordDialog?.mode === 'edit' ? 'Password entry updated.' : 'Password entry added.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -193,8 +207,7 @@ export function App() {
     try {
       await api.deleteRecord(details.id)
       await refreshRecords(null)
-      setNotice('Password entry deleted.')
-      setError('')
+      showNotice('Password entry deleted.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -215,8 +228,7 @@ export function App() {
     if (!details) return
     try {
       const result = await api.copyPassword(details.id)
-      setNotice(`Password copied. It will be cleared in ${result.clear_after_seconds} seconds if unchanged.`)
-      setError('')
+      showNotice(`Password copied. It will be cleared in ${result.clear_after_seconds} seconds if unchanged.`)
     } catch (caught) {
       showError(caught)
     }
@@ -236,11 +248,10 @@ export function App() {
       const choice = await api.chooseImport()
       if (!choice.path) return
       if (!window.confirm('Import this plaintext JSONL file into the unlocked vault?')) return
-      const replace = window.confirm('Replace every current record? Choose Cancel to merge instead.')
-      const result = await api.importJsonl(choice.path, replace)
+      if (!window.confirm('Merge these records into the current vault? Identical records will be skipped; conflicting records will cancel the entire import.')) return
+      const result = await api.importJsonl(choice.path)
       await refreshRecords(null)
-      setNotice(`Imported ${result.imported_count} record${result.imported_count === 1 ? '' : 's'}.`)
-      setError('')
+      showNotice(`Imported ${result.imported_count} record${result.imported_count === 1 ? '' : 's'}; skipped ${result.skipped_count} identical record${result.skipped_count === 1 ? '' : 's'}.`)
     } catch (caught) {
       showError(caught)
     }
@@ -257,8 +268,7 @@ export function App() {
       const choice = await api.chooseExport(format)
       if (!choice.path) return
       const result = await api.exportRecords(choice.path, format)
-      setNotice(`Plaintext export saved to ${result.path}`)
-      setError('')
+      showNotice(`Plaintext export saved to ${result.path}`)
     } catch (caught) {
       try {
         const nextStatus = await api.status()
@@ -286,8 +296,7 @@ export function App() {
     try {
       await api.changePassword(current, next)
       setPasswordDialog(false)
-      setNotice('Master password changed. A backup of the previous vault was retained.')
-      setError('')
+      showNotice('Master password changed. A backup of the previous vault was retained.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -342,8 +351,8 @@ export function App() {
             {filteredRecords.length === 0 && <div className="empty-list"><span>◇</span><p>{records.length ? 'No entries match your search.' : 'Your vault is empty.'}</p></div>}
           </div>
           <div className="records-footer">
-            <button className="button-quiet" onClick={() => void importRecords()}>Import JSONL</button>
-            <div className="export-group"><span>Export:</span><button className="button-quiet" onClick={() => setExportDialog('jsonl')}>JSONL</button><button className="button-quiet" onClick={() => setExportDialog('csv')}>CSV</button></div>
+            <div className="file-action-group"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()}>JSONL</button></div>
+            <div className="file-action-group"><span>Export:</span><button className="button-quiet" aria-label="Export JSONL" onClick={() => setExportDialog('jsonl')}>JSONL</button><button className="button-quiet" aria-label="Export CSV" onClick={() => setExportDialog('csv')}>CSV</button></div>
           </div>
         </aside>
         <section className="detail-pane">

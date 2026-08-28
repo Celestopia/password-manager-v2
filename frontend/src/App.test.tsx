@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
-import { resetMockNativeApi } from './api/mock'
+import { mockNativeApi, resetMockNativeApi } from './api/mock'
 
 describe('App', () => {
   beforeEach(() => resetMockNativeApi())
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
@@ -78,7 +79,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
     await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
-    await user.click(await screen.findByRole('button', { name: 'JSONL' }))
+    await user.click(await screen.findByRole('button', { name: 'Export JSONL' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Export plaintext JSONL' })
     expect(dialog).toHaveTextContent('every password and custom-field value in plaintext')
@@ -90,19 +91,51 @@ describe('App', () => {
   })
 
   it('locks the vault after one failed export reauthentication', async () => {
-    const user = userEvent.setup()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
     await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
     await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
-    await user.click(await screen.findByRole('button', { name: 'CSV' }))
+    await user.click(await screen.findByRole('button', { name: 'Export CSV' }))
     await user.type(screen.getByLabelText('Master password'), 'wrong password')
     await user.click(screen.getByRole('button', { name: 'Verify and export' }))
 
     expect(await screen.findByRole('button', { name: 'Open a vault' })).toBeEnabled()
     expect(screen.getByRole('alert')).toHaveTextContent('Master password is incorrect. The vault has been locked.')
     expect(screen.queryByRole('dialog', { name: 'Export plaintext CSV' })).not.toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(5_000))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('imports JSONL only through an explicit merge confirmation', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await user.click(await screen.findByRole('button', { name: 'Import JSONL' }))
+
+    expect(confirm).toHaveBeenCalledTimes(2)
+    expect(confirm).toHaveBeenNthCalledWith(2, expect.stringContaining('Merge these records'))
+    expect(await screen.findByRole('status')).toHaveTextContent('Imported 0 records; skipped 0 identical records.')
+  })
+
+  it('cancels JSONL import when merge confirmation is declined', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true).mockReturnValueOnce(false)
+    const importJsonl = vi.spyOn(mockNativeApi, 'import_jsonl')
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open a vault' }))
+    await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await user.click(await screen.findByRole('button', { name: 'Import JSONL' }))
+
+    expect(importJsonl).not.toHaveBeenCalled()
   })
 
   it('shows the requested labels and guidance in the password form', async () => {
