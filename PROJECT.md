@@ -112,6 +112,11 @@ Production assets use relative URLs and a Content Security Policy with
 Global success and error banners share a five-second dismissal lifecycle and
 remain manually dismissible; inline form validation persists until corrected or
 the dialog closes.
+The account list supports stable sorting by vault order, account name,
+system-generated creation time (`entry_created`), or update time
+(`entry_updated`). Creation-time sorting uses `created_at`, never the
+human-entered `date` field. The detail metadata card displays creation time on
+the left and update time on the right.
 pywebview runs with debug mode disabled and the Edge Chromium backend selected.
 At desktop window sizes, the detail pane is constrained to the available
 viewport: its card grid uses fixed tracks, and overflowing record or custom-field
@@ -228,9 +233,9 @@ cleanup. Python cannot guarantee physical memory zeroization.
 
 ### 6.2 Reads and secret access
 
-`list_records` returns IDs, descriptive fields, tags, timestamps, and a custom
-field presence flag. `get_record_details` adds creation time, password presence,
-and custom-field keys with value-presence flags.
+`list_records` returns IDs, descriptive fields, tags, creation and update
+timestamps, and a custom-field presence flag. `get_record_details` adds password
+presence and custom-field keys with value-presence flags.
 
 Password and custom-field values cross the bridge only after dedicated reveal
 actions. React removes a revealed password after 10 seconds. Selecting another

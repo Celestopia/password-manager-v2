@@ -408,6 +408,7 @@ class VaultSession:
             "date": record["date"],
             "url": record["url"],
             "tags": list(record["tags"]),
+            "created_at": record["created_at"],
             "updated_at": record["updated_at"],
             "has_custom_fields": bool(record["custom_fields"]),
         }

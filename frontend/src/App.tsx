@@ -361,7 +361,8 @@ export function App() {
               >
                 <option value="account">alphabet</option>
                 <option value="vault">default</option>
-                <option value="updated">last modified</option>
+                <option value="entry_updated">entry_updated</option>
+                <option value="entry_created">entry_created</option>
               </select>
               <button
                 type="button"
@@ -390,7 +391,7 @@ export function App() {
               <article className="detail-card secret-card"><div className="field-heading"><span>Password</span>{details.has_password && <button className="button-quiet" onClick={() => revealedPassword === null ? void revealPassword() : setRevealedPassword(null)}>{revealedPassword === null ? 'Reveal' : 'Hide'}</button>}</div><div className="secret-row"><code>{details.has_password ? revealedPassword ?? '••••••••••••' : 'No password'}</code>{details.has_password && <button className="button-primary button-small" onClick={() => void copyPassword()}>Copy</button>}</div></article>
               <article className="detail-card identity-card"><dl><div><dt>Username</dt><dd>{details.username || '—'}</dd></div><div><dt>Email</dt><dd>{details.mail || '—'}</dd></div><div><dt>Phone</dt><dd>{details.phonenumber || '—'}</dd></div><div><dt>Date</dt><dd>{details.date || '—'}</dd></div><div><dt>Website</dt><dd>{details.url || '—'}</dd></div></dl></article>
               <article className="detail-card custom-fields-card"><div className="field-heading"><span>Custom fields</span>{details.has_custom_fields && <button className="button-quiet" onClick={() => revealedFields === null ? void revealCustomFields() : setRevealedFields(null)}>{revealedFields === null ? 'Reveal values' : 'Hide values'}</button>}</div>{details.custom_fields.length ? <dl>{details.custom_fields.map((field, index) => <div key={`${field.key}-${index}`}><dt>{field.key}</dt><dd>{revealedFields?.[index]?.value ?? (field.has_value ? '••••••••' : '—')}</dd></div>)}</dl> : <p className="muted">No custom fields.</p>}</article>
-              <article className="detail-card metadata-card"><div><span>Tags</span><p className="tag-line">{details.tags.length ? details.tags.map((tag) => <em key={tag}>{tag}</em>) : '—'}</p></div><div><span>Updated</span><p>{formatDate(details.updated_at)}</p></div><div><span>Created</span><p>{formatDate(details.created_at)}</p></div></article>
+              <article className="detail-card metadata-card"><div><span>Tags</span><p className="tag-line">{details.tags.length ? details.tags.map((tag) => <em key={tag}>{tag}</em>) : '—'}</p></div><div><span>Created</span><p>{formatDate(details.created_at)}</p></div><div><span>Updated</span><p>{formatDate(details.updated_at)}</p></div></article>
             </div>
           </>}
         </section>

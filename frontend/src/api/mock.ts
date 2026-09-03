@@ -1,6 +1,6 @@
 import type { ApiResponse, CustomField, NativeApi, RecordDetails, RecordSummary, VaultStatus } from '../types'
 
-type MockRecord = RecordSummary & { password: string; custom_fields: CustomField[]; created_at: string }
+type MockRecord = RecordSummary & { password: string; custom_fields: CustomField[] }
 let unlocked = false
 let masterPassword = 'correct horse battery staple'
 let exportAuthorized = false
@@ -18,6 +18,7 @@ const summary = (record: MockRecord): RecordSummary => ({
   date: record.date,
   url: record.url,
   tags: record.tags,
+  created_at: record.created_at,
   updated_at: record.updated_at,
   has_custom_fields: record.has_custom_fields,
 })
@@ -33,7 +34,7 @@ export const mockNativeApi: NativeApi = {
   async create_vault(_path, password) { unlocked = true; masterPassword = password; records = []; return ok(status()) },
   async lock_vault() { unlocked = false; exportAuthorized = false; return ok(status()) },
   async list_records(query) { const needle = query.toLocaleLowerCase(); return ok(records.filter((record) => record.account.toLocaleLowerCase().includes(needle)).map(summary)) },
-  async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), created_at: record.created_at, has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
+  async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
   async reveal_password(recordId) { return ok({ password: records.find((item) => item.id === recordId)!.password }) },
   async copy_password() { return ok({ clear_after_seconds: 30 }) },
   async reveal_custom_fields(recordId) { return ok(records.find((item) => item.id === recordId)!.custom_fields) },

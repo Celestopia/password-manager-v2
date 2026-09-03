@@ -1,6 +1,6 @@
 import type { RecordSummary } from '../../types'
 
-export type RecordSortField = 'vault' | 'updated' | 'account'
+export type RecordSortField = 'vault' | 'entry_updated' | 'entry_created' | 'account'
 export type SortDirection = 'ascending' | 'descending'
 
 const accountCollator = new Intl.Collator(undefined, {
@@ -30,8 +30,9 @@ export function filterAndSortRecords(
     if (field === 'account') {
       comparison = accountCollator.compare(left.record.account, right.record.account)
     } else {
-      const leftTime = Date.parse(left.record.updated_at)
-      const rightTime = Date.parse(right.record.updated_at)
+      const timestamp = field === 'entry_created' ? 'created_at' : 'updated_at'
+      const leftTime = Date.parse(left.record[timestamp])
+      const rightTime = Date.parse(right.record[timestamp])
       const leftInvalid = Number.isNaN(leftTime)
       const rightInvalid = Number.isNaN(rightTime)
       if (leftInvalid || rightInvalid) {
@@ -52,8 +53,11 @@ export function sortDirectionLabel(field: RecordSortField, direction: SortDirect
   if (field === 'vault') {
     return direction === 'ascending' ? 'Default: first to last' : 'Default: last to first'
   }
-  if (field === 'updated') {
-    return direction === 'ascending' ? 'Last modified: oldest first' : 'Last modified: newest first'
+  if (field === 'entry_updated') {
+    return direction === 'ascending' ? 'Entry updated: oldest first' : 'Entry updated: newest first'
+  }
+  if (field === 'entry_created') {
+    return direction === 'ascending' ? 'Entry created: oldest first' : 'Entry created: newest first'
   }
   return direction === 'ascending' ? 'Alphabet: A to Z' : 'Alphabet: Z to A'
 }

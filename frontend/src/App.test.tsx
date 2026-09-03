@@ -166,16 +166,15 @@ describe('App', () => {
 
   it('sorts and filters account summaries without losing the selected account', async () => {
     const summaries: RecordSummary[] = [
-      { id: 'beta', account: 'Beta', username: 'beta-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-30T00:00:00Z', has_custom_fields: false },
-      { id: 'ten', account: 'Account 10', username: 'ten-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-01T00:00:00Z', has_custom_fields: false },
-      { id: 'two', account: 'Account 2', username: 'two-user', phonenumber: '', mail: '', date: '', url: '', tags: [], updated_at: '2026-08-15T00:00:00Z', has_custom_fields: false },
+      { id: 'beta', account: 'Beta', username: 'beta-user', phonenumber: '', mail: '', date: '', url: '', tags: [], created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-30T00:00:00Z', has_custom_fields: false },
+      { id: 'ten', account: 'Account 10', username: 'ten-user', phonenumber: '', mail: '', date: '', url: '', tags: [], created_at: '2026-08-20T00:00:00Z', updated_at: '2026-08-01T00:00:00Z', has_custom_fields: false },
+      { id: 'two', account: 'Account 2', username: 'two-user', phonenumber: '', mail: '', date: '', url: '', tags: [], created_at: '2026-08-10T00:00:00Z', updated_at: '2026-08-15T00:00:00Z', has_custom_fields: false },
     ]
     vi.spyOn(mockNativeApi, 'list_records').mockResolvedValue({ ok: true, data: summaries })
     vi.spyOn(mockNativeApi, 'get_record_details').mockImplementation(async (recordId) => {
       const summary = summaries.find(({ id }) => id === recordId)!
       const details: RecordDetails = {
         ...summary,
-        created_at: summary.updated_at,
         has_password: true,
         custom_fields: [],
       }
@@ -193,6 +192,8 @@ describe('App', () => {
     await screen.findByRole('button', { name: /Beta/ })
     expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])
     await user.click(screen.getByRole('button', { name: /Beta/ }))
+    await waitFor(() => expect(Array.from(document.querySelectorAll('.metadata-card > div > span'))
+      .map((element) => element.textContent)).toEqual(['Tags', 'Created', 'Updated']))
 
     await user.selectOptions(screen.getByLabelText('Sort accounts by'), 'account')
     expect(listedAccounts()).toEqual(['Account 2', 'Account 10', 'Beta'])
@@ -201,11 +202,23 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Alphabet: A to Z' }))
     expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])
 
-    await user.selectOptions(screen.getByLabelText('Sort accounts by'), 'updated')
-    expect(screen.getByRole('button', { name: 'Last modified: newest first' })).toBeInTheDocument()
+    const sortSelect = screen.getByLabelText('Sort accounts by')
+    expect(Array.from(sortSelect.querySelectorAll('option')).map((option) => option.textContent)).toEqual([
+      'alphabet',
+      'default',
+      'entry_updated',
+      'entry_created',
+    ])
+
+    await user.selectOptions(sortSelect, 'entry_updated')
+    expect(screen.getByRole('button', { name: 'Entry updated: newest first' })).toBeInTheDocument()
     expect(listedAccounts()).toEqual(['Beta', 'Account 2', 'Account 10'])
 
+    await user.selectOptions(sortSelect, 'entry_created')
+    expect(screen.getByRole('button', { name: 'Entry created: newest first' })).toBeInTheDocument()
+    expect(listedAccounts()).toEqual(['Account 10', 'Account 2', 'Beta'])
+
     await user.type(screen.getByLabelText('Search accounts'), 'account')
-    expect(listedAccounts()).toEqual(['Account 2', 'Account 10'])
+    expect(listedAccounts()).toEqual(['Account 10', 'Account 2'])
   })
 })

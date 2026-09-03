@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { RecordSummary } from '../../types'
 import { filterAndSortRecords, sortDirectionLabel } from './recordSorting'
 
-const record = (id: string, account: string, updatedAt: string): RecordSummary => ({
+const record = (id: string, account: string, updatedAt: string, createdAt: string): RecordSummary => ({
   id,
   account,
   username: '',
@@ -12,16 +12,17 @@ const record = (id: string, account: string, updatedAt: string): RecordSummary =
   date: '',
   url: '',
   tags: [],
+  created_at: createdAt,
   updated_at: updatedAt,
   has_custom_fields: false,
 })
 
 const records = [
-  record('invalid', 'Zulu', 'not-a-date'),
-  record('ten', 'Account 10', '2026-08-10T00:00:00Z'),
-  record('two', 'Account 2', '2026-08-02T00:00:00Z'),
-  record('alpha-lower', 'alpha', '2026-08-02T00:00:00Z'),
-  record('alpha-upper', 'Alpha', '2026-08-02T00:00:00Z'),
+  record('invalid', 'Zulu', 'not-a-date', 'not-a-date'),
+  record('ten', 'Account 10', '2026-08-10T00:00:00Z', '2026-08-01T00:00:00Z'),
+  record('two', 'Account 2', '2026-08-02T00:00:00Z', '2026-08-20T00:00:00Z'),
+  record('alpha-lower', 'alpha', '2026-08-02T00:00:00Z', '2026-08-05T00:00:00Z'),
+  record('alpha-upper', 'Alpha', '2026-08-02T00:00:00Z', '2026-08-05T00:00:00Z'),
 ]
 
 const ids = (items: RecordSummary[]) => items.map(({ id }) => id)
@@ -44,18 +45,35 @@ describe('filterAndSortRecords', () => {
   })
 
   it('sorts valid modification times and always places invalid timestamps last', () => {
-    expect(ids(filterAndSortRecords(records, '', 'updated', 'ascending'))).toEqual([
+    expect(ids(filterAndSortRecords(records, '', 'entry_updated', 'ascending'))).toEqual([
       'two',
       'alpha-lower',
       'alpha-upper',
       'ten',
       'invalid',
     ])
-    expect(ids(filterAndSortRecords(records, '', 'updated', 'descending'))).toEqual([
+    expect(ids(filterAndSortRecords(records, '', 'entry_updated', 'descending'))).toEqual([
       'ten',
       'two',
       'alpha-lower',
       'alpha-upper',
+      'invalid',
+    ])
+  })
+
+  it('sorts system-generated creation times and always places invalid timestamps last', () => {
+    expect(ids(filterAndSortRecords(records, '', 'entry_created', 'ascending'))).toEqual([
+      'ten',
+      'alpha-lower',
+      'alpha-upper',
+      'two',
+      'invalid',
+    ])
+    expect(ids(filterAndSortRecords(records, '', 'entry_created', 'descending'))).toEqual([
+      'two',
+      'alpha-lower',
+      'alpha-upper',
+      'ten',
       'invalid',
     ])
   })
@@ -68,7 +86,8 @@ describe('filterAndSortRecords', () => {
 describe('sortDirectionLabel', () => {
   it('describes the active sort direction', () => {
     expect(sortDirectionLabel('vault', 'ascending')).toBe('Default: first to last')
-    expect(sortDirectionLabel('updated', 'descending')).toBe('Last modified: newest first')
+    expect(sortDirectionLabel('entry_updated', 'descending')).toBe('Entry updated: newest first')
+    expect(sortDirectionLabel('entry_created', 'ascending')).toBe('Entry created: oldest first')
     expect(sortDirectionLabel('account', 'ascending')).toBe('Alphabet: A to Z')
   })
 })

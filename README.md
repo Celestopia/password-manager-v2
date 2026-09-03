@@ -7,8 +7,9 @@ Argon2id and ChaCha20-Poly1305.
 
 ## What it provides
 
-- Create, open, search, edit, and delete password records.
+- Create, open, search, sort, edit, and delete password records.
 - Store tags and encrypted custom fields.
+- Sort entries by account name, vault order, creation time, or update time.
 - Reveal passwords explicitly or copy them through the native clipboard.
 - Clear copied passwords after 30 seconds when the clipboard is unchanged.
 - Hide a revealed password again after 10 seconds.

@@ -101,6 +101,7 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
         }
     )
     assert "password" not in summary
+    assert summary["created_at"] == summary["updated_at"]
     assert session.get_record_details(str(summary["id"]))["custom_fields"] == [
         {"key": "PIN", "has_value": True}
     ]
