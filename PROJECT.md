@@ -117,6 +117,15 @@ system-generated creation time (`entry_created`), or update time
 (`entry_updated`). Creation-time sorting uses `created_at`, never the
 human-entered `date` field. The detail metadata card displays creation time on
 the left and update time on the right.
+`RecordList.tsx` owns the dedicated reorder handles, pointer capture and six-pixel
+activation threshold, insertion-line preview, edge scrolling, keyboard movement,
+and live announcements. Reordering is enabled only for unfiltered, ascending
+vault order. Other sort modes, a non-empty search (including whitespace), open
+dialogs, and pending operations disable the handles with explanatory help.
+Active dragging disables competing UI actions; a save-in-progress guard prevents
+duplicate submissions. Escape, focus/window loss, pointer cancellation, or an
+invalid drop discards the preview. Keyboard users pick up with Space/Enter,
+choose a position with Up/Down or Home/End, and confirm with Space/Enter.
 pywebview runs with debug mode disabled and the Edge Chromium backend selected.
 At desktop window sizes, the detail pane is constrained to the available
 viewport: its card grid uses fixed tracks, and overflowing record or custom-field
@@ -258,6 +267,27 @@ Add, update, delete, and import follow one sequence:
 
 Failure before step 9 leaves memory unchanged. Temporary files are removed in a
 `finally` path. The backup represents the last persisted encrypted state.
+
+### 6.3.1 Persistent record reordering
+
+`move_record(record_id, target_id, placement)` accepts only record IDs and
+`before`/`after` placement. It validates both records under the session lock
+and reorders a staged list through the existing transactional mutation path.
+Self-moves and already-adjacent placements that preserve order do not rewrite
+the vault or its backup. External-change checks still apply.
+
+Successful responses contain `{ changed: boolean, records: RecordSummary[] }`,
+an authoritative non-secret snapshot returned under the same session lock.
+The frontend replaces its summary list from this response while retaining the
+selected ID and detail view. Until success, only an insertion indicator changes;
+on failure the confirmed list remains unchanged and the normal error banner
+explains the failure. Each confirmed move saves once; there is no Undo action.
+
+Reordering modifies the encrypted JSONL sequence, not record fields or a
+separate position property. IDs, creation/update timestamps, and all other
+content remain unchanged. Default listing and exports follow the stored order
+after reopening; new records and new import additions still append at the end.
+No schema migration is required.
 
 ### 6.4 Plaintext export reauthentication
 

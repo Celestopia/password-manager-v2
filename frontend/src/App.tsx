@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from './api/client'
 import { ExportDialog } from './features/vault/ExportDialog'
 import { PasswordDialog } from './features/vault/PasswordDialog'
 import { RecordDialog } from './features/vault/RecordDialog'
+import { RecordList } from './features/vault/RecordList'
 import { filterAndSortRecords, sortDirectionLabel } from './features/vault/recordSorting'
 import type { RecordSortField, SortDirection } from './features/vault/recordSorting'
 import { VaultDialog } from './features/vault/VaultDialog'
-import type { CustomField, RecordDetails, RecordInput, RecordSummary, VaultStatus } from './types'
+import type { CustomField, MovePlacement, RecordDetails, RecordInput, RecordSummary, VaultStatus } from './types'
 
 type VaultDialogState = { mode: 'unlock' | 'create'; path: string }
 type RecordDialogState = { mode: 'add' } | { mode: 'edit'; initial: RecordDetails; customFields: CustomField[] }
@@ -34,6 +35,8 @@ export function App() {
   const [sortField, setSortField] = useState<RecordSortField>('vault')
   const [sortDirection, setSortDirection] = useState<SortDirection>('ascending')
   const [busy, setBusy] = useState(false)
+  const [reordering, setReordering] = useState(false)
+  const movePending = useRef(false)
   const [error, setError] = useState('')
   const [errorRevision, setErrorRevision] = useState(0)
   const [notice, setNotice] = useState('')
@@ -109,6 +112,28 @@ export function App() {
     [query, records, sortDirection, sortField],
   )
   const directionLabel = sortDirectionLabel(sortField, sortDirection)
+  const reorderDisabledReason = busy ? 'Wait for the current operation to finish.'
+    : recordDialog || passwordDialog || exportDialog ? 'Close the dialog before reordering.'
+    : sortField !== 'vault' || sortDirection !== 'ascending' || query.length > 0
+      ? 'To reorder, select default sorting with the upward arrow and clear the search.'
+      : null
+
+  const moveRecord = async (id: string, targetId: string, placement: MovePlacement) => {
+    if (movePending.current || reorderDisabledReason) throw new Error('Reordering is unavailable.')
+    movePending.current = true
+    setBusy(true)
+    setError('')
+    try {
+      const result = await api.moveRecord(id, targetId, placement)
+      setRecords(result.records)
+    } catch (caught) {
+      showError(caught)
+      throw caught
+    } finally {
+      movePending.current = false
+      setBusy(false)
+    }
+  }
 
   const chooseVault = async (mode: 'unlock' | 'create') => {
     setError('')
@@ -248,6 +273,7 @@ export function App() {
   }
 
   const importRecords = async () => {
+    setBusy(true)
     try {
       const choice = await api.chooseImport()
       if (!choice.path) return
@@ -258,6 +284,8 @@ export function App() {
       showNotice(`Imported ${result.imported_count} record${result.imported_count === 1 ? '' : 's'}; skipped ${result.skipped_count} identical record${result.skipped_count === 1 ? '' : 's'}.`)
     } catch (caught) {
       showError(caught)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -338,16 +366,16 @@ export function App() {
       <header className="topbar">
         <div className="brand"><span className="brand-symbol">◆</span><strong>Password Manager v2</strong></div>
         <div className="topbar-actions">
-          <button className="button-quiet" onClick={() => setPasswordDialog(true)}>Change master password</button>
-          <button className="button-secondary" onClick={() => void lockVault()} disabled={busy}>Lock vault</button>
+          <button className="button-quiet" onClick={() => setPasswordDialog(true)} disabled={busy || reordering}>Change master password</button>
+          <button className="button-secondary" onClick={() => void lockVault()} disabled={busy || reordering}>Lock vault</button>
         </div>
       </header>
       {(error || notice) && <div className={`banner app-banner ${error ? 'banner-error' : 'banner-success'}`} role={error ? 'alert' : 'status'}><span>{error || notice}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => { setError(''); setNotice('') }}>×</button></div>}
       <div className="workspace">
         <aside className="records-pane">
           <div className="records-toolbar">
-            <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" onChange={(event) => setQuery(event.target.value)} /></label>
-            <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })}>+ Add</button>
+            <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" disabled={busy || reordering} onChange={(event) => setQuery(event.target.value)} /></label>
+            <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })} disabled={busy || reordering}>+ Add</button>
           </div>
           <div className="records-caption">
             <span>{visibleRecords.length} of {records.length} entries</span>
@@ -356,6 +384,7 @@ export function App() {
               <select
                 className="sort-select"
                 aria-label="Sort accounts by"
+                disabled={busy || reordering}
                 value={sortField}
                 onChange={(event) => setSortField(event.target.value as RecordSortField)}
               >
@@ -367,6 +396,7 @@ export function App() {
               <button
                 type="button"
                 className="sort-direction-button"
+                disabled={busy || reordering}
                 aria-label={directionLabel}
                 title={directionLabel}
                 onClick={() => setSortDirection((current) => current === 'ascending' ? 'descending' : 'ascending')}
@@ -375,18 +405,17 @@ export function App() {
               </button>
             </div>
           </div>
-          <div className="record-list">
-            {visibleRecords.map((record) => <button key={record.id} className={`record-card ${selectedId === record.id ? 'selected' : ''}`} onClick={() => void selectRecord(record.id)}><span className="record-card-copy"><strong>{record.account}</strong><small>{record.username || record.mail || 'No username'}</small><span className="tag-line">{record.tags.slice(0, 3).map((tag) => <em key={tag}>{tag}</em>)}</span></span><span className="chevron">›</span></button>)}
-            {visibleRecords.length === 0 && <div className="empty-list"><span>◇</span><p>{records.length ? 'No entries match your search.' : 'Your vault is empty.'}</p></div>}
-          </div>
+          <RecordList records={visibleRecords} selectedId={selectedId} disabledReason={reorderDisabledReason}
+            emptyMessage={records.length ? 'No entries match your search.' : 'Your vault is empty.'}
+            onSelect={(id) => void selectRecord(id)} onMove={moveRecord} onActiveChange={setReordering} />
           <div className="records-footer">
-            <div className="file-action-group"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()}>JSONL</button></div>
-            <div className="file-action-group"><span>Export:</span><button className="button-quiet" aria-label="Export JSONL" onClick={() => setExportDialog('jsonl')}>JSONL</button><button className="button-quiet" aria-label="Export CSV" onClick={() => setExportDialog('csv')}>CSV</button></div>
+            <div className="file-action-group"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()} disabled={busy || reordering}>JSONL</button></div>
+            <div className="file-action-group"><span>Export:</span><button className="button-quiet" aria-label="Export JSONL" onClick={() => setExportDialog('jsonl')} disabled={busy || reordering}>JSONL</button><button className="button-quiet" aria-label="Export CSV" onClick={() => setExportDialog('csv')} disabled={busy || reordering}>CSV</button></div>
           </div>
         </aside>
         <section className="detail-pane">
           {!details ? <div className="empty-detail"><div className="empty-vault-icon">◇</div><h2>{records.length ? 'Select an entry' : 'Add your first password'}</h2><p>{records.length ? 'Choose an account from the list to view its details.' : 'Create a record to begin filling this encrypted vault.'}</p>{!records.length && <button className="button-primary" onClick={() => setRecordDialog({ mode: 'add' })}>Add password</button>}</div> : <>
-            <div className="detail-heading"><div className="detail-title"><p className="eyebrow">Password entry</p><h1>{details.account}</h1><p>{details.username || details.mail || 'No username'}</p></div><div className="detail-actions"><button className="button-secondary" onClick={() => void editRecord()} disabled={busy}>Edit</button><button className="button-danger" onClick={() => void deleteRecord()} disabled={busy}>Delete</button></div></div>
+            <div className="detail-heading"><div className="detail-title"><p className="eyebrow">Password entry</p><h1>{details.account}</h1><p>{details.username || details.mail || 'No username'}</p></div><div className="detail-actions"><button className="button-secondary" onClick={() => void editRecord()} disabled={busy || reordering}>Edit</button><button className="button-danger" onClick={() => void deleteRecord()} disabled={busy || reordering}>Delete</button></div></div>
             <div className="detail-grid">
               <article className="detail-card secret-card"><div className="field-heading"><span>Password</span>{details.has_password && <button className="button-quiet" onClick={() => revealedPassword === null ? void revealPassword() : setRevealedPassword(null)}>{revealedPassword === null ? 'Reveal' : 'Hide'}</button>}</div><div className="secret-row"><code>{details.has_password ? revealedPassword ?? '••••••••••••' : 'No password'}</code>{details.has_password && <button className="button-primary button-small" onClick={() => void copyPassword()}>Copy</button>}</div></article>
               <article className="detail-card identity-card"><dl><div><dt>Username</dt><dd>{details.username || '—'}</dd></div><div><dt>Email</dt><dd>{details.mail || '—'}</dd></div><div><dt>Phone</dt><dd>{details.phonenumber || '—'}</dd></div><div><dt>Date</dt><dd>{details.date || '—'}</dd></div><div><dt>Website</dt><dd>{details.url || '—'}</dd></div></dl></article>

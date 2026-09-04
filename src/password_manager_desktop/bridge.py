@@ -137,6 +137,15 @@ class DesktopBridge:
     def delete_record(self, record_id: object) -> dict[str, object]:
         return self._call(lambda: self._session.delete_record(self._require_string(record_id, "record_id")))
 
+    def move_record(self, record_id: object, target_id: object, placement: object) -> dict[str, object]:
+        return self._call(
+            lambda: self._session.move_record(
+                self._require_string(record_id, "record_id"),
+                self._require_string(target_id, "target_id"),
+                self._require_string(placement, "placement"),
+            )
+        )
+
     def import_jsonl(self, path: object) -> dict[str, object]:
         return self._call(
             lambda: self._session.import_jsonl(self._authorized_path(path, "import", consume=True))

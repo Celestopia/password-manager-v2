@@ -257,6 +257,29 @@ class VaultSession:
         deleted = self._mutate(mutate)
         return self._summary(deleted)
 
+    def move_record(self, record_id: str, target_id: str, placement: str) -> dict[str, object]:
+        """Persist a relative move without changing any record fields."""
+
+        if not isinstance(record_id, str) or not isinstance(target_id, str):
+            raise TypeError("Record IDs must be strings.")
+        if not isinstance(placement, str) or placement not in {"before", "after"}:
+            raise ValueError("placement must be 'before' or 'after'.")
+
+        def mutate(records: list[Record]) -> bool:
+            record = find_record_by_id(records, record_id)
+            target = find_record_by_id(records, target_id)
+            previous_ids = [item["id"] for item in records]
+            if record_id == target_id:
+                return False
+            records.remove(record)
+            index = records.index(target) + (1 if placement == "after" else 0)
+            records.insert(index, record)
+            return previous_ids != [item["id"] for item in records]
+
+        with self._guard:
+            changed = self._mutate(mutate, skip_unchanged=True)
+            return {"changed": changed, "records": self.list_records()}
+
     def import_jsonl(self, source: Path) -> dict[str, int]:
         """Merge validated JSONL records, skipping identical existing IDs."""
 
@@ -353,13 +376,15 @@ class VaultSession:
             path, _, _, _ = self._unlocked_parts()
             return read_header(path)
 
-    def _mutate(self, operation: Callable[[list[Record]], T]) -> T:
+    def _mutate(self, operation: Callable[[list[Record]], T], *, skip_unchanged: bool = False) -> T:
         with self._guard:
             path, password, profile, fingerprint = self._unlocked_parts()
             self._assert_disk_unchanged(path, fingerprint)
             staged = copy.deepcopy(self._records)
             result = operation(staged)
             staged = normalize_records(staged)
+            if skip_unchanged and staged == self._records:
+                return result
             new_fingerprint = write_records(
                 path,
                 staged,

@@ -10,6 +10,7 @@ Argon2id and ChaCha20-Poly1305.
 - Create, open, search, sort, edit, and delete password records.
 - Store tags and encrypted custom fields.
 - Sort entries by account name, vault order, creation time, or update time.
+- Drag an entry's grip handle to change the saved default order.
 - Reveal passwords explicitly or copy them through the native clipboard.
 - Clear copied passwords after 30 seconds when the clipboard is unchanged.
 - Hide a revealed password again after 10 seconds.
@@ -55,6 +56,13 @@ Set-Location ..
 The GUI uses native file dialogs for vault, import, and export paths. A new
 master password must contain at least 12 characters. The default Argon2id memory
 setting is 64 MiB.
+
+Reordering is available only with `default` sorting, the upward direction arrow,
+and an empty search box. Drag the small grip beside an entry and drop at the
+insertion line; the list scrolls automatically near its edges. Keyboard users
+can focus the grip, press Space to pick up, use Up/Down (or Home/End) to move,
+and press Space or Enter to save. Escape cancels. Each move saves immediately
+without changing entry timestamps; there is no Undo action.
 
 JSONL and CSV exports contain plaintext secrets. Choosing either export format
 opens a password panel before the save dialog. Re-enter the current master

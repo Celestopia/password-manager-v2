@@ -24,6 +24,19 @@ const summary = (record: MockRecord): RecordSummary => ({
 })
 
 export const mockNativeApi: NativeApi = {
+  async move_record(recordId, targetId, placement) {
+    if (!unlocked) return failure('SESSION_STATE_INVALID', 'No vault is unlocked.')
+    if (placement !== 'before' && placement !== 'after') return failure('INVALID_ARGUMENT', 'Invalid placement.')
+    const record = records.find((item) => item.id === recordId)
+    const target = records.find((item) => item.id === targetId)
+    if (!record || !target) return failure('RECORD_NOT_FOUND', 'Record not found.')
+    const previous = records.map((item) => item.id)
+    if (record !== target) {
+      records.splice(records.indexOf(record), 1)
+      records.splice(records.indexOf(target) + (placement === 'after' ? 1 : 0), 0, record)
+    }
+    return ok({ changed: records.some((item, index) => item.id !== previous[index]), records: records.map(summary) })
+  },
   async get_status() { return ok(status()) },
   async choose_vault() { return ok({ path: 'C:\\Mock\\vault.pmdb' }) },
   async choose_new_vault_path() { return ok({ path: 'C:\\Mock\\new-vault.pmdb' }) },

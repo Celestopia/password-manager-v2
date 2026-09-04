@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -33,7 +33,7 @@ describe('App', () => {
 
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
     expect(screen.getByText('Choose an account from the list to view its details.')).toBeInTheDocument()
-    const recordButton = await screen.findByRole('button', { name: /Example Account/ })
+    const recordButton = await screen.findByRole('button', { name: /^Example Account/ })
     expect(recordButton.querySelector('.account-avatar')).toBeNull()
     await user.click(recordButton)
     expect(document.querySelector('.large-avatar')).toBeNull()
@@ -164,6 +164,56 @@ describe('App', () => {
     expect(await screen.findByPlaceholderText('Search accounts')).toHaveAccessibleName('Search accounts')
   })
 
+  it('enables reordering only in default ascending order with no search or open dialog', async () => {
+    await mockNativeApi.unlock_vault('mock', 'password')
+    const user = userEvent.setup()
+    render(<App />)
+    const handle = await screen.findByRole('button', { name: 'Reorder Example Account' })
+    expect(handle).toBeEnabled()
+    const sort = screen.getByLabelText('Sort accounts by')
+    for (const field of ['account', 'entry_created', 'entry_updated']) {
+      await user.selectOptions(sort, field)
+      expect(handle).toBeDisabled()
+    }
+    await user.selectOptions(sort, 'vault')
+    await user.click(screen.getByRole('button', { name: 'Default: first to last' }))
+    expect(handle).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Default: last to first' }))
+    await user.type(screen.getByLabelText('Search accounts'), ' ')
+    expect(handle).toBeDisabled()
+    await user.clear(screen.getByLabelText('Search accounts'))
+    expect(handle).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    expect(handle).toBeDisabled()
+  })
+
+  it.each([false, true])('keeps selection and confirmed order through a keyboard move (failure=%s)', async (fail) => {
+    HTMLElement.prototype.scrollIntoView = vi.fn()
+    await mockNativeApi.unlock_vault('mock', 'password')
+    await mockNativeApi.add_record({
+      account: 'Second', username: '', phonenumber: '', mail: '', date: '', url: '', tags: [],
+      custom_fields: [], password: 'synthetic',
+    })
+    const move = vi.spyOn(mockNativeApi, 'move_record')
+    if (fail) move.mockResolvedValue({ ok: false, error: { code: 'IO_ERROR', message: 'Simulated save failure.' } })
+    const user = userEvent.setup()
+    render(<App />)
+    const handle = await screen.findByRole('button', { name: 'Reorder Example Account' })
+    await user.click(screen.getByRole('button', { name: /^Example Account/ }))
+    fireEvent.keyDown(handle, { key: ' ' })
+    expect(screen.getByLabelText('Sort accounts by')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Lock vault' })).toBeDisabled()
+    fireEvent.keyDown(handle, { key: 'End' })
+    fireEvent.keyDown(handle, { key: ' ' })
+    await waitFor(() => expect(move).toHaveBeenCalledTimes(1))
+    if (fail) expect(await screen.findByRole('alert')).toHaveTextContent('Simulated save failure.')
+    else await screen.findByText(/Entry order saved/)
+    expect(Array.from(document.querySelectorAll('.record-card strong')).map((item) => item.textContent))
+      .toEqual(fail ? ['Example Account', 'Second'] : ['Second', 'Example Account'])
+    expect(screen.getByRole('button', { name: /^Example Account/ })).toHaveClass('selected')
+    expect(screen.getByRole('heading', { name: 'Example Account' })).toBeInTheDocument()
+  })
+
   it('sorts and filters account summaries without losing the selected account', async () => {
     const summaries: RecordSummary[] = [
       { id: 'beta', account: 'Beta', username: 'beta-user', phonenumber: '', mail: '', date: '', url: '', tags: [], created_at: '2026-08-01T00:00:00Z', updated_at: '2026-08-30T00:00:00Z', has_custom_fields: false },
@@ -189,15 +239,15 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
     await user.click(screen.getByRole('button', { name: 'Unlock' }))
 
-    await screen.findByRole('button', { name: /Beta/ })
+    await screen.findByRole('button', { name: /^Beta/ })
     expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])
-    await user.click(screen.getByRole('button', { name: /Beta/ }))
+    await user.click(screen.getByRole('button', { name: /^Beta/ }))
     await waitFor(() => expect(Array.from(document.querySelectorAll('.metadata-card > div > span'))
       .map((element) => element.textContent)).toEqual(['Tags', 'Created', 'Updated']))
 
     await user.selectOptions(screen.getByLabelText('Sort accounts by'), 'account')
     expect(listedAccounts()).toEqual(['Account 2', 'Account 10', 'Beta'])
-    expect(screen.getByRole('button', { name: /Beta/ })).toHaveClass('selected')
+    expect(screen.getByRole('button', { name: /^Beta/ })).toHaveClass('selected')
 
     await user.click(screen.getByRole('button', { name: 'Alphabet: A to Z' }))
     expect(listedAccounts()).toEqual(['Beta', 'Account 10', 'Account 2'])

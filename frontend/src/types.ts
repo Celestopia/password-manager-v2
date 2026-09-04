@@ -5,6 +5,8 @@ export interface HiddenCustomField { key: string; has_value: boolean }
 export interface RecordDetails extends RecordSummary { has_password: boolean; custom_fields: HiddenCustomField[] }
 export interface RecordInput { account: string; username: string; phonenumber: string; mail: string; date: string; url: string; tags: string[]; custom_fields: CustomField[]; password?: string; password_change?: string }
 export interface ImportResult { imported_count: number; skipped_count: number }
+export type MovePlacement = 'before' | 'after'
+export interface MoveResult { changed: boolean; records: RecordSummary[] }
 export interface ApiFailure { ok: false; error: { code: string; message: string } }
 export interface ApiSuccess<T> { ok: true; data: T }
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure
@@ -27,6 +29,7 @@ export interface NativeApi {
   add_record(values: RecordInput): Promise<ApiResponse<RecordSummary>>
   update_record(recordId: string, values: Partial<RecordInput>): Promise<ApiResponse<RecordSummary>>
   delete_record(recordId: string): Promise<ApiResponse<RecordSummary>>
+  move_record(recordId: string, targetId: string, placement: MovePlacement): Promise<ApiResponse<MoveResult>>
   import_jsonl(path: string): Promise<ApiResponse<ImportResult>>
   export_records(path: string, format: string, confirmedPlaintext: boolean): Promise<ApiResponse<{ path: string; format: string }>>
   change_master_password(currentPassword: string, newPassword: string): Promise<ApiResponse<{ changed: boolean }>>
