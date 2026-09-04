@@ -208,7 +208,7 @@ Every record contains exactly these fields:
 | `id` | string | Non-empty stable UUID generated for new records. |
 | `account` | string | Non-empty display and search name. |
 | `username` | string | Optional. |
-| `password` | string | Non-empty for GUI and CLI additions. |
+| `password` | string | May be empty, including GUI and CLI additions. Blank GUI password edits keep the current value; master-password requirements are unchanged. |
 | `phonenumber` | string | Optional free text. |
 | `mail` | string | Optional free text. |
 | `date` | string | Optional free text. |

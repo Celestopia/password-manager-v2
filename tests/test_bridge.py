@@ -79,6 +79,22 @@ def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path:
     }
 
 
+def test_bridge_accepts_empty_password_but_rejects_null(tmp_path: Path) -> None:
+    path = (tmp_path / "empty.pmdb").resolve()
+    bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
+    bridge._grant(path, "create_vault")
+    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, False, 8))
+    try:
+        saved = assert_data(bridge.add_record({"account": "Passwordless", "password": ""}))
+        assert isinstance(saved, dict)
+        details = assert_data(bridge.get_record_details(str(saved["id"])))
+        assert isinstance(details, dict)
+        assert details["has_password"] is False
+        assert bridge.add_record({"account": "Invalid", "password": None})["ok"] is False
+    finally:
+        bridge._shutdown()
+
+
 def test_bridge_consumes_file_grants(tmp_path: Path) -> None:
     path = (tmp_path / "one-shot.pmdb").resolve()
     bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]

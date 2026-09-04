@@ -215,8 +215,6 @@ class VaultSession:
         """Validate and persist a new record transactionally."""
 
         parsed = self._parse_add_values(values)
-        if not parsed["password"]:
-            raise RecordValidationError("Password cannot be empty for a new record.")
         created = new_record(**parsed)
 
         def mutate(records: list[Record]) -> Record:

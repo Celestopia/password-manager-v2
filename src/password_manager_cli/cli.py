@@ -201,7 +201,7 @@ def cmd_add(args: argparse.Namespace) -> int:
     values = {
         "account": args.account if args.account is not None else prompt_required("Account"),
         "username": args.username,
-        "password": prompt_secret_twice("Password"),
+        "password": prompt_secret_twice("Password", allow_empty=True),
         "phonenumber": args.phonenumber,
         "mail": args.mail,
         "date": args.date,
@@ -341,11 +341,13 @@ def prompt_new_master_password() -> str:
     return value
 
 
-def prompt_secret_twice(label: str) -> str:
+def prompt_secret_twice(label: str, *, allow_empty: bool = False) -> str:
     first = getpass.getpass(f"{label}: ")
     second = getpass.getpass(f"Confirm {label.casefold()}: ")
-    if not first or first != second:
-        raise ValueError(f"{label} cannot be empty and both entries must match.")
+    if first != second:
+        raise ValueError(f"Both {label.casefold()} entries must match.")
+    if not first and not allow_empty:
+        raise ValueError(f"{label} cannot be empty.")
     return first
 
 

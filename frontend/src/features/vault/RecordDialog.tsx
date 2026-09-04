@@ -32,7 +32,6 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!account.trim()) return setValidation('Account is required.')
-    if (mode === 'add' && !password) return setValidation('Password is required for a new record.')
     const normalizedFields = fields.filter((field) => field.key.trim() || field.value)
     if (normalizedFields.some((field) => !field.key.trim())) return setValidation('Every custom field needs a name.')
     const keys = normalizedFields.map((field) => field.key.trim())

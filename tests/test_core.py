@@ -118,6 +118,33 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
     assert load_vault(path, MASTER_PASSWORD).records[0]["password"] == "new secret"
 
 
+@pytest.mark.parametrize("values", [{"password": ""}, {}])
+def test_empty_password_survives_storage_export_import_and_edits(tmp_path: Path, values: dict[str, str]) -> None:
+    path = tmp_path / "empty.pmdb"
+    exported = tmp_path / "empty.jsonl"
+    session = VaultSession()
+    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    try:
+        saved = session.add_record({"account": "Passwordless", **values})
+        record_id = str(saved["id"])
+        assert session.get_record_details(record_id)["has_password"] is False
+        session.export_records(exported, "jsonl", confirmed_plaintext=True)
+        assert jsonl_to_records(exported.read_bytes())[0]["password"] == ""
+        session.lock()
+        session.unlock(path, MASTER_PASSWORD)
+        assert session.reveal_password(record_id) == ""
+        session.delete_record(record_id)
+        assert session.import_jsonl(exported)["imported_count"] == 1
+        session.update_record(record_id, {"username": "alice"})
+        assert session.reveal_password(record_id) == ""
+        session.update_record(record_id, {"password_change": "later secret"})
+        session.update_record(record_id, {"username": "bob"})
+        assert session.reveal_password(record_id) == "later secret"
+    finally:
+        session.lock()
+    assert load_vault(path, MASTER_PASSWORD).records[0]["password"] == "later secret"
+
+
 def test_import_merges_new_records_and_skips_identical_records(tmp_path: Path) -> None:
     path = tmp_path / "merge.pmdb"
     source = tmp_path / "import.jsonl"

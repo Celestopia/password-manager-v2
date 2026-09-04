@@ -14,6 +14,32 @@ describe('App', () => {
     vi.useRealTimers()
   })
 
+  it('creates an empty password and preserves blank-edit semantics before and after adding a password', async () => {
+    const user = userEvent.setup()
+    await mockNativeApi.unlock_vault('mock', 'password')
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: '+ Add' }))
+    expect(screen.getByLabelText('Password', { exact: true })).toHaveValue('')
+    await user.type(screen.getByLabelText('Account'), 'Passwordless')
+    await user.click(screen.getByRole('button', { name: 'Add password' }))
+    expect(await screen.findByText('No password')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(await screen.findByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('No password')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.type(await screen.findByLabelText('New password (leave blank to keep current)'), 'later secret')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+    await screen.findByRole('button', { name: 'Reveal' })
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    await user.click(await screen.findByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Reveal' }))
+    expect(await screen.findByText('later secret')).toBeInTheDocument()
+  })
+
   it('offers open and create actions while the vault is locked', async () => {
     render(<App />)
 
