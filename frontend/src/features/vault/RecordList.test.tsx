@@ -82,8 +82,53 @@ describe('RecordList reordering', () => {
     pointer(handle, 345)
     const list = screen.getByLabelText('Account entries')
     act(() => tick(0))
+    act(() => tick(1_000 / 60))
     expect(list.scrollTop).toBeGreaterThan(0)
     fireEvent.pointerCancel(handle)
+  })
+
+  it.each([60, 120, 144])('scrolls at 3600 pixels per second at %s FPS', (fps) => {
+    const { handle } = setup()
+    pointer(handle, 350)
+    act(() => { for (let index = 0; index <= fps; index++) tick(index * 1_000 / fps) })
+    expect(screen.getByLabelText('Account entries').scrollTop).toBeCloseTo(3_600)
+  })
+
+  it.each([
+    [0, -180], [30, -90], [50, -30], [60, 0],
+    [175, 0], [290, 0], [300, 30], [320, 90], [350, 180],
+  ])('ramps linearly in the 60-pixel edge zone at y=%s', (y, displacement) => {
+    const { handle } = setup()
+    const list = screen.getByLabelText('Account entries')
+    list.scrollTop = 500
+    pointer(handle, y, 30)
+    act(() => { tick(0); tick(50) })
+    expect(list.scrollTop).toBeCloseTo(500 + displacement)
+  })
+
+  it('caps delayed frames and resets elapsed time between drags', () => {
+    const { handle } = setup()
+    const list = screen.getByLabelText('Account entries')
+    pointer(handle, 350)
+    act(() => { tick(0); tick(2_000) })
+    expect(list.scrollTop).toBeCloseTo(180)
+    fireEvent.pointerCancel(handle)
+    pointer(handle, 350)
+    act(() => tick(10_000))
+    expect(list.scrollTop).toBeCloseTo(180)
+    act(() => tick(10_025))
+    expect(list.scrollTop).toBeCloseTo(270)
+  })
+
+  it('does not scroll outside the list or before crossing the drag threshold', () => {
+    const { handle } = setup()
+    const list = screen.getByLabelText('Account entries')
+    pointer(handle, 53)
+    act(() => { tick(0); tick(50) })
+    expect(list.scrollTop).toBe(0)
+    fireEvent.pointerMove(handle, { clientX: 400, clientY: 350 })
+    act(() => { tick(100); tick(150) })
+    expect(list.scrollTop).toBe(0)
   })
 
   it('supports keyboard pickup, movement, and confirmation', async () => {

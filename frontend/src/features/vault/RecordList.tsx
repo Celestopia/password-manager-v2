@@ -3,6 +3,10 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 
 import type { MovePlacement, RecordSummary } from '../../types'
 
+const AUTO_SCROLL_EDGE_PX = 60
+const AUTO_SCROLL_MAX_PX_PER_SECOND = 3_600
+const AUTO_SCROLL_MAX_FRAME_MS = 50
+
 type Target = { id: string; placement: MovePlacement }
 type Gesture = {
   id: string
@@ -37,6 +41,7 @@ export function RecordList({ records, selectedId, disabledReason, emptyMessage, 
   const listRef = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
   const frame = useRef<number | null>(null)
+  const lastFrameTime = useRef<number | null>(null)
   const pending = useRef(false)
   const focusAfterSave = useRef<string | null>(null)
   const [preview, setPreview] = useState<Preview>(null)
@@ -60,6 +65,7 @@ export function RecordList({ records, selectedId, disabledReason, emptyMessage, 
     gesture.current = null
     if (frame.current !== null) cancelAnimationFrame(frame.current)
     frame.current = null
+    lastFrameTime.current = null
     setPreview(null)
     onActiveChange(false)
   }, [onActiveChange])
@@ -109,19 +115,22 @@ export function RecordList({ records, selectedId, disabledReason, emptyMessage, 
     return last ? { id: last.dataset.recordId!, placement: 'after' } : null
   }
 
-  const trackPointer = () => {
+  const trackPointer = (timestamp: number) => {
     const current = gesture.current
     if (!current || current.mode !== 'pointer') return
+    const elapsedSeconds = lastFrameTime.current === null ? 0
+      : Math.min(AUTO_SCROLL_MAX_FRAME_MS, Math.max(0, timestamp - lastFrameTime.current)) / 1_000
+    lastFrameTime.current = timestamp
     if (current.active) {
       const list = listRef.current
       if (list) {
         const bounds = list.getBoundingClientRect()
         if (current.x >= bounds.left && current.x <= bounds.right && current.y >= bounds.top && current.y <= bounds.bottom) {
-          const edge = Math.min(40, bounds.height / 4)
+          const edge = Math.min(AUTO_SCROLL_EDGE_PX, bounds.height / 4)
           const top = current.y - bounds.top
           const bottom = bounds.bottom - current.y
-          const speed = top < edge ? -12 * (1 - top / edge) : bottom < edge ? 12 * (1 - bottom / edge) : 0
-          list.scrollTop += speed
+          const intensity = top < edge ? -(1 - top / edge) : bottom < edge ? 1 - bottom / edge : 0
+          list.scrollTop += AUTO_SCROLL_MAX_PX_PER_SECOND * intensity * elapsedSeconds
         }
       }
       current.target = targetAtPointer(current)
@@ -151,6 +160,7 @@ export function RecordList({ records, selectedId, disabledReason, emptyMessage, 
     current.y = event.clientY
     if (!current.active && Math.hypot(current.x - current.startX, current.y - current.startY) >= 6) {
       current.active = true
+      lastFrameTime.current = null
       onActiveChange(true)
       setAnnouncement('Entry picked up. Drop at the insertion line to save, or press Escape to cancel.')
     }

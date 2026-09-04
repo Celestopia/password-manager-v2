@@ -119,7 +119,11 @@ human-entered `date` field. The detail metadata card displays creation time on
 the left and update time on the right.
 `RecordList.tsx` owns the dedicated reorder handles, pointer capture and six-pixel
 activation threshold, insertion-line preview, edge scrolling, keyboard movement,
-and live announcements. Reordering is enabled only for unfiltered, ascending
+and live announcements. Edge scrolling ramps linearly within 60 CSS pixels of
+the top/bottom (capped at one quarter of the list height), up to 3,600 CSS pixels
+per second. Animation-frame timestamps make the rate independent of refresh
+rate; elapsed time is capped at 50 ms per frame to avoid jumps after stalls and
+reset for each drag. Reordering is enabled only for unfiltered, ascending
 vault order. Other sort modes, a non-empty search (including whitespace), open
 dialogs, and pending operations disable the handles with explanatory help.
 Active dragging disables competing UI actions; a save-in-progress guard prevents
