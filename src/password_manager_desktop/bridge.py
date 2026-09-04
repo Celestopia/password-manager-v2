@@ -230,7 +230,7 @@ class DesktopBridge:
                 raise ValueError("Unsupported export format.")
             result = self._require_window().create_file_dialog(
                 webview.FileDialog.SAVE,
-                save_filename=f"passwords.{selected}",
+                save_filename=f"accounts.{selected}",
                 file_types=(("JSON Lines (*.jsonl)",) if selected == "jsonl" else ("CSV (*.csv)",)),
             )
         except Exception:

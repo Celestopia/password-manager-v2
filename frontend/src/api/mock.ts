@@ -41,7 +41,7 @@ export const mockNativeApi: NativeApi = {
   async choose_vault() { return ok({ path: 'C:\\Mock\\vault.pmdb' }) },
   async choose_new_vault_path() { return ok({ path: 'C:\\Mock\\new-vault.pmdb' }) },
   async choose_import_file() { return ok({ path: 'C:\\Mock\\import.jsonl' }) },
-  async choose_export_file(format) { if (!exportAuthorized) return failure('PERMISSION_DENIED', 'Plaintext export requires fresh master-password authorization.'); return ok({ path: `C:\\Mock\\passwords.${format}` }) },
+  async choose_export_file(format) { if (!exportAuthorized) return failure('PERMISSION_DENIED', 'Plaintext export requires fresh master-password authorization.'); return ok({ path: `C:\\Mock\\accounts.${format}` }) },
   async authorize_export(password) { exportAuthorized = false; if (password !== masterPassword) { unlocked = false; return failure('VAULT_AUTHENTICATION_FAILED', 'Master password is incorrect. The vault has been locked.') } exportAuthorized = true; return ok({ authorized: true }) },
   async unlock_vault(_path, password) { unlocked = true; masterPassword = password; return ok(status()) },
   async create_vault(_path, password) { unlocked = true; masterPassword = password; records = []; return ok(status()) },

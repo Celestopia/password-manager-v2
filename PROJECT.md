@@ -102,6 +102,12 @@ visual identity.
 
 ### 3.4 Frontend
 
+UI copy calls a complete stored item an account or account entry. Password refers
+only to its credential, and master password refers to vault protection. Dialogs,
+notifications, empty states, and import messages follow this distinction; native
+exports default to `accounts.jsonl` or `accounts.csv`. The Password Manager v2
+brand, internal record APIs, and serialized field names remain unchanged.
+
 The React renderer is not authoritative. `frontend/src/api/client.ts` waits for
 the pywebview bridge in production and uses the in-memory mock only in Vite
 development mode. Persistent changes are returned by Python and followed by a

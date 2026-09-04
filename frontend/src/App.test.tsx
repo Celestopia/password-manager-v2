@@ -19,16 +19,21 @@ describe('App', () => {
     await mockNativeApi.unlock_vault('mock', 'password')
     render(<App />)
     await user.click(await screen.findByRole('button', { name: '+ Add' }))
+    expect(screen.getByRole('dialog', { name: 'Add account' })).toBeInTheDocument()
     expect(screen.getByLabelText('Password', { exact: true })).toHaveValue('')
     await user.type(screen.getByLabelText('Account'), 'Passwordless')
-    await user.click(screen.getByRole('button', { name: 'Add password' }))
+    await user.click(screen.getByRole('button', { name: 'Add account' }))
     expect(await screen.findByText('No password')).toBeInTheDocument()
+    expect(screen.getByText('Account entry')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Account entry added.')
     expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(await screen.findByRole('dialog', { name: 'Edit account' })).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByText('No password')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Account entry updated.')
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.type(await screen.findByLabelText('New password (leave blank to keep current)'), 'later secret')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
@@ -38,6 +43,21 @@ describe('App', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Reveal' }))
     expect(await screen.findByText('later secret')).toBeInTheDocument()
+  })
+
+  it('uses account wording in the empty vault and deletion notice', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await mockNativeApi.unlock_vault('mock', 'password')
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /^Example Account/ }))
+    await user.click(await screen.findByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('heading', { name: 'Add your first account' })).toBeInTheDocument()
+    expect(screen.getByText('Add an account to this encrypted vault.')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Account entry deleted.')
+    await user.click(screen.getByRole('button', { name: 'Add account' }))
+    expect(screen.getByRole('dialog', { name: 'Add account' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Password', { exact: true })).toBeInTheDocument()
   })
 
   it('offers open and create actions while the vault is locked', async () => {
@@ -113,7 +133,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Master password'), 'correct horse battery staple')
     await user.click(screen.getByRole('button', { name: 'Verify and export' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Plaintext export saved to C:\\Mock\\passwords.jsonl')
+    expect(await screen.findByRole('status')).toHaveTextContent('Plaintext export saved to C:\\Mock\\accounts.jsonl')
     expect(dialog).not.toBeInTheDocument()
   })
 
@@ -147,8 +167,8 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: 'Import JSONL' }))
 
     expect(confirm).toHaveBeenCalledTimes(2)
-    expect(confirm).toHaveBeenNthCalledWith(2, expect.stringContaining('Merge these records'))
-    expect(await screen.findByRole('status')).toHaveTextContent('Imported 0 records; skipped 0 identical records.')
+    expect(confirm).toHaveBeenNthCalledWith(2, expect.stringContaining('Merge these account entries'))
+    expect(await screen.findByRole('status')).toHaveTextContent('Imported 0 account entries; skipped 0 identical account entries.')
   })
 
   it('cancels JSONL import when merge confirmation is declined', async () => {

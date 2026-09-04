@@ -52,7 +52,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
   }
 
   return (
-    <Modal title={mode === 'add' ? 'Add password' : 'Edit password'} onClose={onClose} wide>
+    <Modal title={mode === 'add' ? 'Add account' : 'Edit account'} onClose={onClose} wide>
       <form className="form-stack" onSubmit={submit}>
         <div className="form-grid">
           <label>Account<input autoFocus value={account} onChange={(event) => setAccount(event.target.value)} /></label>
@@ -78,7 +78,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
         {validation && <p className="form-error">{validation}</p>}
         <div className="dialog-actions">
           <button type="button" className="button-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" className="button-primary" disabled={busy}>{busy ? 'Saving…' : mode === 'add' ? 'Add password' : 'Save changes'}</button>
+          <button type="submit" className="button-primary" disabled={busy}>{busy ? 'Saving…' : mode === 'add' ? 'Add account' : 'Save changes'}</button>
         </div>
       </form>
     </Modal>

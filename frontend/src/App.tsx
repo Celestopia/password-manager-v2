@@ -206,7 +206,7 @@ export function App() {
       setRevealedPassword(null)
       setRevealedFields(null)
       await refreshRecords(saved.id)
-      showNotice(recordDialog?.mode === 'edit' ? 'Password entry updated.' : 'Password entry added.')
+      showNotice(recordDialog?.mode === 'edit' ? 'Account entry updated.' : 'Account entry added.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -236,7 +236,7 @@ export function App() {
     try {
       await api.deleteRecord(details.id)
       await refreshRecords(null)
-      showNotice('Password entry deleted.')
+      showNotice('Account entry deleted.')
     } catch (caught) {
       showError(caught)
     } finally {
@@ -278,10 +278,10 @@ export function App() {
       const choice = await api.chooseImport()
       if (!choice.path) return
       if (!window.confirm('Import this plaintext JSONL file into the unlocked vault?')) return
-      if (!window.confirm('Merge these records into the current vault? Identical records will be skipped; conflicting records will cancel the entire import.')) return
+      if (!window.confirm('Merge these account entries into the current vault? Identical account entries will be skipped; conflicting account entries will cancel the entire import.')) return
       const result = await api.importJsonl(choice.path)
       await refreshRecords(null)
-      showNotice(`Imported ${result.imported_count} record${result.imported_count === 1 ? '' : 's'}; skipped ${result.skipped_count} identical record${result.skipped_count === 1 ? '' : 's'}.`)
+      showNotice(`Imported ${result.imported_count} account entr${result.imported_count === 1 ? 'y' : 'ies'}; skipped ${result.skipped_count} identical account entr${result.skipped_count === 1 ? 'y' : 'ies'}.`)
     } catch (caught) {
       showError(caught)
     } finally {
@@ -414,8 +414,8 @@ export function App() {
           </div>
         </aside>
         <section className="detail-pane">
-          {!details ? <div className="empty-detail"><div className="empty-vault-icon">◇</div><h2>{records.length ? 'Select an entry' : 'Add your first password'}</h2><p>{records.length ? 'Choose an account from the list to view its details.' : 'Create a record to begin filling this encrypted vault.'}</p>{!records.length && <button className="button-primary" onClick={() => setRecordDialog({ mode: 'add' })}>Add password</button>}</div> : <>
-            <div className="detail-heading"><div className="detail-title"><p className="eyebrow">Password entry</p><h1>{details.account}</h1><p>{details.username || details.mail || 'No username'}</p></div><div className="detail-actions"><button className="button-secondary" onClick={() => void editRecord()} disabled={busy || reordering}>Edit</button><button className="button-danger" onClick={() => void deleteRecord()} disabled={busy || reordering}>Delete</button></div></div>
+          {!details ? <div className="empty-detail"><div className="empty-vault-icon">◇</div><h2>{records.length ? 'Select an entry' : 'Add your first account'}</h2><p>{records.length ? 'Choose an account from the list to view its details.' : 'Add an account to this encrypted vault.'}</p>{!records.length && <button className="button-primary" onClick={() => setRecordDialog({ mode: 'add' })}>Add account</button>}</div> : <>
+            <div className="detail-heading"><div className="detail-title"><p className="eyebrow">Account entry</p><h1>{details.account}</h1><p>{details.username || details.mail || 'No username'}</p></div><div className="detail-actions"><button className="button-secondary" onClick={() => void editRecord()} disabled={busy || reordering}>Edit</button><button className="button-danger" onClick={() => void deleteRecord()} disabled={busy || reordering}>Delete</button></div></div>
             <div className="detail-grid">
               <article className="detail-card secret-card"><div className="field-heading"><span>Password</span>{details.has_password && <button className="button-quiet" onClick={() => revealedPassword === null ? void revealPassword() : setRevealedPassword(null)}>{revealedPassword === null ? 'Reveal' : 'Hide'}</button>}</div><div className="secret-row"><code>{details.has_password ? revealedPassword ?? '••••••••••••' : 'No password'}</code>{details.has_password && <button className="button-primary button-small" onClick={() => void copyPassword()}>Copy</button>}</div></article>
               <article className="detail-card identity-card"><dl><div><dt>Username</dt><dd>{details.username || '—'}</dd></div><div><dt>Email</dt><dd>{details.mail || '—'}</dd></div><div><dt>Phone</dt><dd>{details.phonenumber || '—'}</dd></div><div><dt>Date</dt><dd>{details.date || '—'}</dd></div><div><dt>Website</dt><dd>{details.url || '—'}</dd></div></dl></article>
