@@ -219,12 +219,13 @@ Every record contains exactly these fields:
 | `mail` | string | Optional free text. |
 | `date` | string | Optional free text. |
 | `url` | string | Optional text; the UI does not navigate to it. |
+| `description` | string | Required free-form text that may be empty; line breaks are preserved. |
 | `custom_fields` | array | Unique non-empty string keys with string values. |
 | `tags` | string array | Ordered labels. |
 | `created_at` | string | UTC ISO-8601 timestamp for generated records. |
 | `updated_at` | string | UTC ISO-8601 timestamp refreshed on updates. |
 
-Unknown or missing fields, invalid scalar types, duplicate custom-field keys,
+Unknown or missing fields (including `description`), invalid scalar types, duplicate custom-field keys,
 and duplicate record IDs are rejected. Search is a case-insensitive substring
 match on `account` that preserves source order.
 
@@ -235,6 +236,9 @@ different content aborts the entire import as a conflict. Only new IDs are
 added, and an all-identical import does not rewrite the vault. CSV and JSONL
 exports are plaintext and include passwords and custom-field values. JSONL uses
 deterministic key ordering; CSV stores tags and custom fields as JSON strings.
+The description schema revision has no implicit compatibility path: old vaults
+and imports missing the field are rejected and require an explicit one-time
+migration.
 
 ## 6. State and data flows
 
@@ -252,9 +256,10 @@ cleanup. Python cannot guarantee physical memory zeroization.
 
 ### 6.2 Reads and secret access
 
-`list_records` returns IDs, descriptive fields, tags, creation and update
-timestamps, and a custom-field presence flag. `get_record_details` adds password
-presence and custom-field keys with value-presence flags.
+`list_records` returns IDs, compact list fields, tags, creation and update
+timestamps, and a custom-field presence flag; it omits descriptions and search
+continues to match only `account`. `get_record_details` adds the description,
+password presence, and custom-field keys with value-presence flags.
 
 Password and custom-field values cross the bridge only after dedicated reveal
 actions. React removes a revealed password after 10 seconds. Selecting another

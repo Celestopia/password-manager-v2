@@ -19,8 +19,12 @@ def test_add_accepts_empty_password(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     session.lock()
     answers = iter(["", "", master])
     monkeypatch.setattr("getpass.getpass", lambda _: next(answers))
-    assert main(["add", str(path), "--account", "Passwordless"]) == 0
-    assert load_vault(path, master).records[0]["password"] == ""
+    assert main(
+        ["add", str(path), "--account", "Passwordless", "--description", "Line one\n背景"]
+    ) == 0
+    record = load_vault(path, master).records[0]
+    assert record["password"] == ""
+    assert record["description"] == "Line one\n背景"
 
 
 @pytest.mark.parametrize("answers", [("", "different"), ("different", "")])

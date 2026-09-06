@@ -2,8 +2,8 @@ export interface VaultStatus { unlocked: boolean; vault_path: string | null; rec
 export interface RecordSummary { id: string; account: string; username: string; phonenumber: string; mail: string; date: string; url: string; tags: string[]; created_at: string; updated_at: string; has_custom_fields: boolean }
 export interface CustomField { key: string; value: string }
 export interface HiddenCustomField { key: string; has_value: boolean }
-export interface RecordDetails extends RecordSummary { has_password: boolean; custom_fields: HiddenCustomField[] }
-export interface RecordInput { account: string; username: string; phonenumber: string; mail: string; date: string; url: string; tags: string[]; custom_fields: CustomField[]; password?: string; password_change?: string }
+export interface RecordDetails extends RecordSummary { description: string; has_password: boolean; custom_fields: HiddenCustomField[] }
+export interface RecordInput { account: string; username: string; phonenumber: string; mail: string; date: string; url: string; description: string; tags: string[]; custom_fields: CustomField[]; password?: string; password_change?: string }
 export interface ImportResult { imported_count: number; skipped_count: number }
 export type MovePlacement = 'before' | 'after'
 export interface MoveResult { changed: boolean; records: RecordSummary[] }

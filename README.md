@@ -99,7 +99,7 @@ JSONL imports are UTF-8 files with one complete record per line. Every record
 must include all fixed-schema fields, including a unique ID and timestamps:
 
 ```json
-{"id":"7be1424d-5c31-4afb-85b5-53a5d8821c15","account":"Example","username":"alice","password":"synthetic-secret","phonenumber":"","mail":"alice@example.test","date":"","url":"https://example.test","custom_fields":[{"key":"PIN","value":"1234"}],"tags":["demo"],"created_at":"2026-08-28T00:00:00Z","updated_at":"2026-08-28T00:00:00Z"}
+{"id":"7be1424d-5c31-4afb-85b5-53a5d8821c15","account":"Example","username":"alice","password":"synthetic-secret","phonenumber":"","mail":"alice@example.test","date":"","url":"https://example.test","description":"Primary personal account","custom_fields":[{"key":"PIN","value":"1234"}],"tags":["demo"],"created_at":"2026-08-28T00:00:00Z","updated_at":"2026-08-28T00:00:00Z"}
 ```
 
 Import is merge-only and never replaces the current vault. Records with new IDs
@@ -107,6 +107,10 @@ are added, records that are completely identical to an existing ID are skipped,
 and an existing ID with different content aborts the whole import. Duplicate IDs
 inside the import file are invalid. Successful results report both added and
 skipped counts.
+
+`description` is a required string in every serialized record, although it may
+be empty. Vaults and JSONL files created before this field was introduced must
+be explicitly migrated; the application does not silently repair old schemas.
 
 Use only synthetic values in fixtures and examples. Imports and exports are
 plaintext; remove them safely when they are no longer needed.

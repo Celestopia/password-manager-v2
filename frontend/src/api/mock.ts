@@ -1,10 +1,10 @@
 import type { ApiResponse, CustomField, NativeApi, RecordDetails, RecordSummary, VaultStatus } from '../types'
 
-type MockRecord = RecordSummary & { password: string; custom_fields: CustomField[] }
+type MockRecord = RecordSummary & { description: string; password: string; custom_fields: CustomField[] }
 let unlocked = false
 let masterPassword = 'correct horse battery staple'
 let exportAuthorized = false
-const demoRecords = (): MockRecord[] => [{ id: 'demo-record', account: 'Example Account', username: 'demo@example.com', password: 'demo-password', phonenumber: '', mail: 'demo@example.com', date: '2026-08', url: 'https://example.com', tags: ['demo'], custom_fields: [{ key: 'Recovery code', value: 'example-only' }], has_custom_fields: true, created_at: '2026-08-28T00:00:00Z', updated_at: '2026-08-28T00:00:00Z' }]
+const demoRecords = (): MockRecord[] => [{ id: 'demo-record', account: 'Example Account', username: 'demo@example.com', password: 'demo-password', phonenumber: '', mail: 'demo@example.com', date: '2026-08', url: 'https://example.com', description: 'Example background information.', tags: ['demo'], custom_fields: [{ key: 'Recovery code', value: 'example-only' }], has_custom_fields: true, created_at: '2026-08-28T00:00:00Z', updated_at: '2026-08-28T00:00:00Z' }]
 let records = demoRecords()
 const ok = <T,>(data: T): ApiResponse<T> => ({ ok: true, data })
 const failure = (code: string, message: string): ApiResponse<never> => ({ ok: false, error: { code, message } })
@@ -47,7 +47,7 @@ export const mockNativeApi: NativeApi = {
   async create_vault(_path, password) { unlocked = true; masterPassword = password; records = []; return ok(status()) },
   async lock_vault() { unlocked = false; exportAuthorized = false; return ok(status()) },
   async list_records(query) { const needle = query.toLocaleLowerCase(); return ok(records.filter((record) => record.account.toLocaleLowerCase().includes(needle)).map(summary)) },
-  async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
+  async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), description: record.description, has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
   async reveal_password(recordId) { return ok({ password: records.find((item) => item.id === recordId)!.password }) },
   async copy_password() { return ok({ clear_after_seconds: 30 }) },
   async reveal_custom_fields(recordId) { return ok(records.find((item) => item.id === recordId)!.custom_fields) },

@@ -49,7 +49,7 @@ class VaultSession:
     """Keep secrets in Python and expose only minimum business-level views."""
 
     _ADD_FIELDS = frozenset(
-        {"account", "username", "password", "phonenumber", "mail", "date", "url", "custom_fields", "tags"}
+        {"account", "username", "password", "phonenumber", "mail", "date", "url", "description", "custom_fields", "tags"}
     )
     _UPDATE_FIELDS = frozenset(
         {
@@ -60,6 +60,7 @@ class VaultSession:
             "mail",
             "date",
             "url",
+            "description",
             "custom_fields",
             "tags",
         }
@@ -182,6 +183,7 @@ class VaultSession:
             details.update(
                 {
                     "created_at": record["created_at"],
+                    "description": record["description"],
                     "has_password": bool(record["password"]),
                     "custom_fields": [
                         {"key": field["key"], "has_value": bool(field["value"])}
@@ -448,6 +450,7 @@ class VaultSession:
             "mail": self._optional_string(values, "mail"),
             "date": self._optional_string(values, "date"),
             "url": self._optional_string(values, "url"),
+            "description": self._optional_string(values, "description", strip=False),
             "custom_fields": normalize_custom_fields(values.get("custom_fields", [])),
             "tags": self._parse_tags(values.get("tags", [])),
         }
@@ -456,9 +459,11 @@ class VaultSession:
         self._require_mapping(values)
         self._reject_unknown(values, self._UPDATE_FIELDS)
         parsed: dict[str, Any] = {}
-        for key in ("account", "username", "phonenumber", "mail", "date", "url"):
+        for key in ("account", "username", "phonenumber", "mail", "date", "url", "description"):
             if key in values:
-                parsed[key] = self._require_string(values, key, non_empty=key == "account")
+                parsed[key] = self._require_string(
+                    values, key, non_empty=key == "account", strip=key != "description"
+                )
         if "password_change" in values:
             parsed["password_change"] = self._require_string(values, "password_change", strip=False)
         if "custom_fields" in values:

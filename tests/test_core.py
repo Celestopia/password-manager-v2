@@ -50,12 +50,25 @@ def test_authenticated_container_round_trip_and_rejects_wrong_password() -> None
 
 
 def test_jsonl_round_trip_preserves_unicode_and_rejects_duplicate_ids() -> None:
-    first = new_record(account="银行", username="alice", password="secret")
+    first = new_record(account="银行", username="alice", password="secret", description="主账户\n需保留")
     second = new_record(account="Mail", username="bob", password="secret-2")
 
     assert jsonl_to_records(records_to_jsonl([first, second])) == [first, second]
     with pytest.raises(RecordValidationError, match="Duplicate record id"):
         records_to_jsonl([first, first])
+
+
+def test_description_is_strictly_required_and_must_be_a_string() -> None:
+    record = new_record(account="Example")
+    assert record["description"] == ""
+    missing = dict(record)
+    del missing["description"]
+    with pytest.raises(RecordValidationError, match="missing required field.*description"):
+        records_to_jsonl([missing])  # type: ignore[list-item]
+    invalid = dict(record)
+    invalid["description"] = None
+    with pytest.raises(RecordValidationError, match="description.*must be a string"):
+        records_to_jsonl([invalid])  # type: ignore[list-item]
 
 
 def test_vault_write_detects_conflicts_and_keeps_overwrite_backup(tmp_path: Path) -> None:
@@ -96,18 +109,26 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
             "account": "Example",
             "username": "alice",
             "password": "top secret",
+            "description": "Primary account\n背景信息",
             "custom_fields": [{"key": "PIN", "value": "1234"}],
             "tags": ["work"],
         }
     )
     assert "password" not in summary
     assert summary["created_at"] == summary["updated_at"]
-    assert session.get_record_details(str(summary["id"]))["custom_fields"] == [
+    assert "description" not in summary
+    details = session.get_record_details(str(summary["id"]))
+    assert details["description"] == "Primary account\n背景信息"
+    assert details["custom_fields"] == [
         {"key": "PIN", "has_value": True}
     ]
     assert session.reveal_password(str(summary["id"])) == "top secret"
+    assert session.list_records("background") == []
 
-    session.update_record(str(summary["id"]), {"account": "Renamed", "password_change": "new secret"})
+    session.update_record(
+        str(summary["id"]),
+        {"account": "Renamed", "password_change": "new secret", "description": ""},
+    )
     assert session.reveal_password(str(summary["id"])) == "new secret"
     with pytest.raises(PlaintextConfirmationError):
         session.export_records(export_path, "jsonl", confirmed_plaintext=False)
@@ -116,6 +137,7 @@ def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> N
 
     assert jsonl_to_records(export_path.read_bytes())[0]["account"] == "Renamed"
     assert load_vault(path, MASTER_PASSWORD).records[0]["password"] == "new secret"
+    assert load_vault(path, MASTER_PASSWORD).records[0]["description"] == ""
 
 
 @pytest.mark.parametrize("values", [{"password": ""}, {}])
@@ -218,15 +240,12 @@ def test_export_reauthentication_locks_session_after_one_failure(tmp_path: Path)
     assert session.unlocked is False
 
 
-def test_v1_golden_vault_is_read_without_migration(tmp_path: Path) -> None:
+def test_unmigrated_golden_vault_is_rejected_by_strict_schema(tmp_path: Path) -> None:
     path = tmp_path / "legacy.pmdb"
     path.write_bytes(base64.b64decode(V1_GOLDEN))
 
-    snapshot = load_vault(path, "legacy-master-password")
-
-    assert snapshot.records[0]["account"] == "旧版账户"
-    assert snapshot.records[0]["password"] == "legacy-secret"
-    assert snapshot.records[0]["custom_fields"] == [{"key": "PIN", "value": "4321"}]
+    with pytest.raises(RecordValidationError, match="missing required field.*description"):
+        load_vault(path, "legacy-master-password")
 
 
 def test_untrusted_kdf_cost_is_bounded_before_derivation() -> None:

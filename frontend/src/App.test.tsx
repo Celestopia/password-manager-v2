@@ -21,18 +21,23 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: '+ Add' }))
     expect(screen.getByRole('dialog', { name: 'Add account' })).toBeInTheDocument()
     expect(screen.getByLabelText('Password', { exact: true })).toHaveValue('')
+    await user.type(screen.getByLabelText('Description'), 'Line one{enter}背景信息')
     await user.type(screen.getByLabelText('Account'), 'Passwordless')
     await user.click(screen.getByRole('button', { name: 'Add account' }))
     expect(await screen.findByText('No password')).toBeInTheDocument()
     expect(screen.getByText('Account entry')).toBeInTheDocument()
+    expect(document.querySelector('.description-card')).toHaveTextContent('Line one 背景信息')
     expect(screen.getByRole('status')).toHaveTextContent('Account entry added.')
     expect(screen.queryByRole('button', { name: 'Reveal' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     expect(await screen.findByRole('dialog', { name: 'Edit account' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Description')).toHaveValue('Line one\n背景信息')
+    await user.clear(screen.getByLabelText('Description'))
     await user.click(await screen.findByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByText('No password')).toBeInTheDocument()
+    expect(document.querySelector('.description-card')).toHaveTextContent('—')
     expect(screen.getByRole('status')).toHaveTextContent('Account entry updated.')
     await user.click(screen.getByRole('button', { name: 'Edit' }))
     await user.type(await screen.findByLabelText('New password (leave blank to keep current)'), 'later secret')
@@ -83,6 +88,8 @@ describe('App', () => {
     expect(recordButton.querySelector('.account-avatar')).toBeNull()
     await user.click(recordButton)
     expect(document.querySelector('.large-avatar')).toBeNull()
+    expect(document.querySelectorAll('.identity-card dl > div')).toHaveLength(5)
+    expect(document.querySelector('.description-card button')).toBeNull()
     expect(screen.queryByText('C:\\Mock\\vault.pmdb')).not.toBeInTheDocument()
     expect(screen.getAllByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)).toHaveLength(2)
     expect(await screen.findByText('••••••••••••')).toBeInTheDocument()
@@ -195,6 +202,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: '+ Add' }))
 
     expect(screen.getByLabelText('Creation Date')).toBeInTheDocument()
+    expect(screen.getByLabelText('Description')).toHaveAttribute('rows', '2')
     expect(screen.getByPlaceholderText('game, finance (use comma to separate tags)')).toBeInTheDocument()
     expect(screen.getByText('Add your custom information.')).toBeInTheDocument()
   })
@@ -238,7 +246,7 @@ describe('App', () => {
     await mockNativeApi.unlock_vault('mock', 'password')
     await mockNativeApi.add_record({
       account: 'Second', username: '', phonenumber: '', mail: '', date: '', url: '', tags: [],
-      custom_fields: [], password: 'synthetic',
+      description: '', custom_fields: [], password: 'synthetic',
     })
     const move = vi.spyOn(mockNativeApi, 'move_record')
     if (fail) move.mockResolvedValue({ ok: false, error: { code: 'IO_ERROR', message: 'Simulated save failure.' } })
@@ -271,6 +279,7 @@ describe('App', () => {
       const summary = summaries.find(({ id }) => id === recordId)!
       const details: RecordDetails = {
         ...summary,
+        description: summary.id === 'beta' ? 'Search must ignore account keyword here.' : '',
         has_password: true,
         custom_fields: [],
       }

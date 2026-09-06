@@ -18,7 +18,10 @@ PASSWORD = "correct horse battery staple"
 @pytest.fixture
 def vault(tmp_path: Path) -> Iterator[tuple[VaultSession, Path, list[Record]]]:
     path = tmp_path / "ordered.pmdb"
-    records = [new_record(account=name, password="secret-" + name) for name in "ABCD"]
+    records = [
+        new_record(account=name, password="secret-" + name, description="description-" + name)
+        for name in "ABCD"
+    ]
     source = tmp_path / "source.jsonl"
     source.write_bytes(records_to_jsonl(records))
     session = VaultSession()

@@ -52,6 +52,7 @@ def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path:
                 "account": "Example",
                 "username": "alice",
                 "password": "native-only-secret",
+                "description": "Background\n背景",
                 "custom_fields": [{"key": "PIN", "value": "1234"}],
             }
         )
@@ -60,6 +61,9 @@ def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path:
     record_id = str(saved["id"])
     listing = assert_data(bridge.list_records())
     details = assert_data(bridge.get_record_details(record_id))
+    assert isinstance(details, dict)
+    assert details["description"] == "Background\n背景"
+    assert "description" not in repr(listing)
     assert "native-only-secret" not in repr(listing)
     assert "1234" not in repr(details)
 
@@ -90,6 +94,7 @@ def test_bridge_accepts_empty_password_but_rejects_null(tmp_path: Path) -> None:
         details = assert_data(bridge.get_record_details(str(saved["id"])))
         assert isinstance(details, dict)
         assert details["has_password"] is False
+        assert details["description"] == ""
         assert bridge.add_record({"account": "Invalid", "password": None})["ok"] is False
     finally:
         bridge._shutdown()

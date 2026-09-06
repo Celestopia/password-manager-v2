@@ -66,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--mail", default="")
     add.add_argument("--date", default="")
     add.add_argument("--url", default="")
+    add.add_argument("--description", default="")
     add.add_argument("--field", action="append", default=[], metavar="KEY=VALUE")
     add.add_argument("--tag", action="append", default=[])
     add.set_defaults(handler=cmd_add)
@@ -73,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     edit = commands.add_parser("edit", help="Update explicitly supplied fields on one record.")
     add_vault_arg(edit)
     edit.add_argument("selector")
-    for option in ("account", "username", "phonenumber", "mail", "date", "url"):
+    for option in ("account", "username", "phonenumber", "mail", "date", "url", "description"):
         edit.add_argument(f"--{option}", default=argparse.SUPPRESS)
     edit.add_argument("--change-password", action="store_true", help="Read a replacement password from a hidden prompt.")
     edit.add_argument("--replace-fields", action="store_true", help="Replace custom fields with repeated --field values.")
@@ -184,6 +185,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     else:
         for label, key in (("ID", "id"), ("Account", "account"), ("Username", "username"), ("Password", "password"),
                            ("Phone", "phonenumber"), ("Mail", "mail"), ("Date", "date"), ("URL", "url"),
+                           ("Description", "description"),
                            ("Updated", "updated_at")):
             print(f"{label + ':':<10}{record[key]}")
         tags = record["tags"]
@@ -206,6 +208,7 @@ def cmd_add(args: argparse.Namespace) -> int:
         "mail": args.mail,
         "date": args.date,
         "url": args.url,
+        "description": args.description,
         "custom_fields": parse_custom_fields(args.field),
         "tags": args.tag,
     }
@@ -216,7 +219,8 @@ def cmd_add(args: argparse.Namespace) -> int:
 
 def cmd_edit(args: argparse.Namespace) -> int:
     values: dict[str, Any] = {
-        key: getattr(args, key) for key in ("account", "username", "phonenumber", "mail", "date", "url")
+        key: getattr(args, key)
+        for key in ("account", "username", "phonenumber", "mail", "date", "url", "description")
         if hasattr(args, key)
     }
     if args.change_password:

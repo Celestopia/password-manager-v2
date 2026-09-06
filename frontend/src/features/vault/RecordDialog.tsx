@@ -13,7 +13,7 @@ interface Props {
 }
 
 const blank = {
-  account: '', username: '', phonenumber: '', mail: '', date: '', url: '', tags: [] as string[],
+  account: '', username: '', phonenumber: '', mail: '', date: '', url: '', description: '', tags: [] as string[],
 }
 
 export function RecordDialog({ mode, initial, customFields = [], busy, onClose, onSubmit }: Props) {
@@ -25,6 +25,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
   const [mail, setMail] = useState(seed.mail)
   const [date, setDate] = useState(seed.date)
   const [url, setUrl] = useState(seed.url)
+  const [description, setDescription] = useState(seed.description)
   const [tags, setTags] = useState(seed.tags.join(', '))
   const [fields, setFields] = useState<CustomField[]>(customFields)
   const [validation, setValidation] = useState('')
@@ -38,7 +39,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
     if (new Set(keys).size !== keys.length) return setValidation('Custom field names must be unique.')
     setValidation('')
     const values: RecordInput = {
-      account: account.trim(), username, phonenumber, mail, date, url,
+      account: account.trim(), username, phonenumber, mail, date, url, description,
       tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       custom_fields: normalizedFields.map((field) => ({ key: field.key.trim(), value: field.value })),
     }
@@ -63,6 +64,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
           <label>Creation Date<input value={date} placeholder="YYYY-MM-DD or a note" onChange={(event) => setDate(event.target.value)} /></label>
           <label>Website<input type="url" value={url} placeholder="https://example.com" onChange={(event) => setUrl(event.target.value)} /></label>
           <label className="span-two">Tags<input value={tags} placeholder="game, finance (use comma to separate tags)" onChange={(event) => setTags(event.target.value)} /></label>
+          <label className="span-two">Description<textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         </div>
         <div className="custom-fields-heading">
           <div><h3>Custom fields</h3><p>Add your custom information.</p></div>
