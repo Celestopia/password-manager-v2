@@ -280,6 +280,53 @@ class VaultSession:
             changed = self._mutate(mutate, skip_unchanged=True)
             return {"changed": changed, "records": self.list_records()}
 
+    def rename_tag(self, old_name: str, new_name: str) -> dict[str, object]:
+        """Rename or merge one derived tag across every affected record."""
+
+        old_tag = self._normalize_tag_name(old_name, "old_name")
+        new_tag = self._normalize_tag_name(new_name, "new_name")
+        changed_at = utc_now()
+
+        def mutate(records: list[Record]) -> bool:
+            changed = False
+            for record in records:
+                if old_tag not in record["tags"]:
+                    continue
+                next_tags: list[str] = []
+                for tag in record["tags"]:
+                    candidate = new_tag if tag == old_tag else tag
+                    if candidate not in next_tags:
+                        next_tags.append(candidate)
+                if next_tags != record["tags"]:
+                    record["tags"] = next_tags
+                    record["updated_at"] = changed_at
+                    changed = True
+            return changed
+
+        with self._guard:
+            changed = self._mutate(mutate, skip_unchanged=True)
+            return {"changed": changed, "records": self.list_records()}
+
+    def delete_tag(self, name: str) -> dict[str, object]:
+        """Remove one derived tag from every affected record."""
+
+        target = self._normalize_tag_name(name, "name")
+        changed_at = utc_now()
+
+        def mutate(records: list[Record]) -> bool:
+            changed = False
+            for record in records:
+                next_tags = [tag for tag in record["tags"] if tag != target]
+                if next_tags != record["tags"]:
+                    record["tags"] = next_tags
+                    record["updated_at"] = changed_at
+                    changed = True
+            return changed
+
+        with self._guard:
+            changed = self._mutate(mutate, skip_unchanged=True)
+            return {"changed": changed, "records": self.list_records()}
+
     def import_jsonl(self, source: Path) -> dict[str, int]:
         """Merge validated JSONL records, skipping identical existing IDs."""
 
@@ -505,4 +552,18 @@ class VaultSession:
     def _parse_tags(value: object) -> list[str]:
         if not isinstance(value, list) or not all(isinstance(tag, str) for tag in value):
             raise RecordValidationError("Record input 'tags' must be a list of strings.")
-        return [tag.strip() for tag in value if tag.strip()]
+        tags: list[str] = []
+        for value_tag in value:
+            tag = value_tag.strip()
+            if tag and tag not in tags:
+                tags.append(tag)
+        return tags
+
+    @staticmethod
+    def _normalize_tag_name(value: object, name: str) -> str:
+        if not isinstance(value, str):
+            raise TypeError(f"{name} must be a string.")
+        tag = value.strip()
+        if not tag:
+            raise ValueError(f"{name} cannot be empty.")
+        return tag

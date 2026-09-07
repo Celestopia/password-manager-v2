@@ -123,6 +123,19 @@ system-generated creation time (`entry_created`), or update time
 (`entry_updated`). Creation-time sorting uses `created_at`, never the
 human-entered `date` field. The detail metadata card displays creation time on
 the left and update time on the right.
+`tagRegistry.ts` derives an alphabetized `{ name, accountCount }` registry from
+the non-secret record summaries already held by React. It is recomputed after
+every authoritative record refresh or mutation and is never serialized as a
+second source of truth. Multiple selected filters use AND semantics and combine
+with account-name search. The tag-filter popover is absolutely positioned over
+the sidebar with its own bounded scroll area; opening it never participates in
+the records pane's flex sizing or reduces the account list height.
+`TagPicker.tsx` replaces comma-separated tag entry with a searchable
+multi-selector. It offers registry labels, permits creation only by attaching a
+new label to the record being saved, trims labels, and removes exact duplicate
+inputs while preserving order. Its full horizontal control is the accessible
+dropdown trigger; chip removal buttons remain independent controls.
+Consequently, unused labels do not persist.
 `RecordList.tsx` owns the dedicated reorder handles, pointer capture and six-pixel
 activation threshold, insertion-line preview, edge scrolling, keyboard movement,
 and live announcements. Edge scrolling ramps linearly within 60 CSS pixels of
@@ -130,8 +143,9 @@ the top/bottom (capped at one quarter of the list height), up to 3,600 CSS pixel
 per second. Animation-frame timestamps make the rate independent of refresh
 rate; elapsed time is capped at 50 ms per frame to avoid jumps after stalls and
 reset for each drag. Reordering is enabled only for unfiltered, ascending
-vault order. Other sort modes, a non-empty search (including whitespace), open
-dialogs, and pending operations disable the handles with explanatory help.
+vault order. Other sort modes, a non-empty search (including whitespace), active
+tag filters, open dialogs, and pending operations disable the handles with
+explanatory help.
 Active dragging disables competing UI actions; a save-in-progress guard prevents
 duplicate submissions. Escape, focus/window loss, pointer cancellation, or an
 invalid drop discards the preview. Keyboard users pick up with Space/Enter,
@@ -221,7 +235,7 @@ Every record contains exactly these fields:
 | `url` | string | Optional text; the UI does not navigate to it. |
 | `description` | string | Required free-form text that may be empty; line breaks are preserved. |
 | `custom_fields` | array | Unique non-empty string keys with string values. |
-| `tags` | string array | Ordered labels. |
+| `tags` | string array | Ordered labels; GUI/session inputs are trimmed and exact duplicates are removed. |
 | `created_at` | string | UTC ISO-8601 timestamp for generated records. |
 | `updated_at` | string | UTC ISO-8601 timestamp refreshed on updates. |
 
@@ -303,6 +317,26 @@ separate position property. IDs, creation/update timestamps, and all other
 content remain unchanged. Default listing and exports follow the stored order
 after reopening; new records and new import additions still append at the end.
 No schema migration is required.
+
+### 6.3.2 Derived tag registry and bulk mutation
+
+The registry is the union of non-empty, trimmed tag labels in record summaries;
+it is not application-level data and adds no field to the encrypted payload.
+Each registry count includes an account at most once even if imported legacy
+data repeats a label. Import, add, edit, delete, rename, and tag removal all
+cause the frontend registry to be recomputed. Removing the last reference also
+removes the label from the registry.
+
+`rename_tag(old_name, new_name)` replaces the exact old label in all affected
+records. If the new label already exists on an affected record, the operation
+merges the labels without leaving a duplicate. `delete_tag(name)` removes the
+exact label from all affected records. Both operations trim and validate their
+arguments, preserve record order, update `updated_at` only on affected records,
+stage the complete change through `_mutate`, and write the vault at most once.
+No-op requests do not rewrite the vault or backup. Their safe bridge result is
+`{ changed: boolean, records: RecordSummary[] }`; secret values never cross the
+boundary. The manager asks for confirmation before a merge or vault-wide
+removal.
 
 ### 6.4 Plaintext export reauthentication
 

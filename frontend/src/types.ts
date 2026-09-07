@@ -7,6 +7,7 @@ export interface RecordInput { account: string; username: string; phonenumber: s
 export interface ImportResult { imported_count: number; skipped_count: number }
 export type MovePlacement = 'before' | 'after'
 export interface MoveResult { changed: boolean; records: RecordSummary[] }
+export interface TagMutationResult { changed: boolean; records: RecordSummary[] }
 export interface ApiFailure { ok: false; error: { code: string; message: string } }
 export interface ApiSuccess<T> { ok: true; data: T }
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure
@@ -30,6 +31,8 @@ export interface NativeApi {
   update_record(recordId: string, values: Partial<RecordInput>): Promise<ApiResponse<RecordSummary>>
   delete_record(recordId: string): Promise<ApiResponse<RecordSummary>>
   move_record(recordId: string, targetId: string, placement: MovePlacement): Promise<ApiResponse<MoveResult>>
+  rename_tag(oldName: string, newName: string): Promise<ApiResponse<TagMutationResult>>
+  delete_tag(name: string): Promise<ApiResponse<TagMutationResult>>
   import_jsonl(path: string): Promise<ApiResponse<ImportResult>>
   export_records(path: string, format: string, confirmedPlaintext: boolean): Promise<ApiResponse<{ path: string; format: string }>>
   change_master_password(currentPassword: string, newPassword: string): Promise<ApiResponse<{ changed: boolean }>>

@@ -81,6 +81,17 @@ describe('filterAndSortRecords', () => {
   it('filters before applying the selected order', () => {
     expect(ids(filterAndSortRecords(records, 'account', 'account', 'ascending'))).toEqual(['two', 'ten'])
   })
+
+  it('requires every selected tag and combines tag filtering with account search', () => {
+    const tagged = records.map((item, index) => ({
+      ...item,
+      tags: index === 1 ? ['work', 'shared'] : index === 2 ? ['work'] : ['shared'],
+    }))
+    expect(ids(filterAndSortRecords(tagged, '', 'vault', 'ascending', ['work']))).toEqual(['ten', 'two'])
+    expect(ids(filterAndSortRecords(tagged, '', 'vault', 'ascending', ['work', 'shared']))).toEqual(['ten'])
+    expect(ids(filterAndSortRecords(tagged, 'account', 'account', 'ascending', ['work']))).toEqual(['two', 'ten'])
+    expect(ids(filterAndSortRecords(tagged, 'zulu', 'vault', 'ascending', ['work']))).toEqual([])
+  })
 })
 
 describe('sortDirectionLabel', () => {

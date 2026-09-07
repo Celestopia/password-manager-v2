@@ -14,11 +14,16 @@ export function filterAndSortRecords(
   query: string,
   field: RecordSortField,
   direction: SortDirection,
+  selectedTags: string[] = [],
 ): RecordSummary[] {
   const needle = query.trim().toLocaleLowerCase()
   const candidates = records
     .map((record, originalIndex) => ({ record, originalIndex }))
-    .filter(({ record }) => !needle || record.account.toLocaleLowerCase().includes(needle))
+    .filter(({ record }) => {
+      if (needle && !record.account.toLocaleLowerCase().includes(needle)) return false
+      const recordTags = new Set(record.tags.map((tag) => tag.trim()))
+      return selectedTags.every((tag) => recordTags.has(tag))
+    })
 
   if (field === 'vault') {
     const ordered = candidates.map(({ record }) => record)

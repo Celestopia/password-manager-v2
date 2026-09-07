@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -203,7 +203,9 @@ describe('App', () => {
 
     expect(screen.getByLabelText('Creation Date')).toBeInTheDocument()
     expect(screen.getByLabelText('Description')).toHaveAttribute('rows', '2')
-    expect(screen.getByPlaceholderText('game, finance (use comma to separate tags)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Select tags' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Select tags' }))
+    expect(screen.getByPlaceholderText('Search or create a tag')).toBeInTheDocument()
     expect(screen.getByText('Add your custom information.')).toBeInTheDocument()
   })
 
@@ -239,6 +241,69 @@ describe('App', () => {
     expect(handle).toBeEnabled()
     await user.click(screen.getByRole('button', { name: '+ Add' }))
     expect(handle).toBeDisabled()
+  })
+
+  it('filters accounts by all selected tags in a floating menu and disables reordering', async () => {
+    await mockNativeApi.unlock_vault('mock', 'password')
+    await mockNativeApi.add_record({
+      account: 'Shared work', username: '', phonenumber: '', mail: '', date: '', url: '',
+      tags: ['demo', 'work'], description: '', custom_fields: [], password: '',
+    })
+    await mockNativeApi.add_record({
+      account: 'Work only', username: '', phonenumber: '', mail: '', date: '', url: '',
+      tags: ['work'], description: '', custom_fields: [], password: '',
+    })
+    const listedAccounts = () => Array.from(document.querySelectorAll('.record-card strong')).map((item) => item.textContent)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: /^Example Account/ }))
+    const filter = screen.getByRole('button', { name: 'Filter accounts by tags' })
+    await user.click(filter)
+    const menu = screen.getByRole('dialog', { name: 'Filter accounts by tags' })
+    expect(menu).toHaveClass('tag-filter-popover')
+    await user.click(screen.getByRole('checkbox', { name: /demo/ }))
+    expect(listedAccounts()).toEqual(['Example Account', 'Shared work'])
+    await user.click(screen.getByRole('checkbox', { name: /work/ }))
+    expect(listedAccounts()).toEqual(['Shared work'])
+    expect(screen.getByRole('heading', { name: 'Example Account' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reorder Shared work' })).toBeDisabled()
+    expect(filter).toHaveTextContent('2 tags selected')
+  })
+
+  it('creates selectable tags and manages derived registry names across accounts', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await mockNativeApi.unlock_vault('mock', 'password')
+    const rename = vi.spyOn(mockNativeApi, 'rename_tag')
+    const remove = vi.spyOn(mockNativeApi, 'delete_tag')
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: '+ Add' }))
+    await user.type(screen.getByLabelText('Account'), 'Tagged account')
+    await user.click(screen.getByRole('button', { name: 'Select tags' }))
+    const tagSearch = screen.getByLabelText('Search or create a tag')
+    await user.type(tagSearch, 'new tag')
+    await user.click(screen.getByRole('button', { name: '+ Create “new tag”' }))
+    expect(screen.getByRole('button', { name: 'Remove tag new tag' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add account' }))
+    await screen.findByRole('heading', { name: 'Tagged account' })
+
+    await user.click(screen.getByRole('button', { name: 'Manage tags' }))
+    const dialog = screen.getByRole('dialog', { name: 'Manage tags' })
+    const newTagRow = within(dialog).getByText('new tag').closest('.tag-manager-row')!
+    await user.click(newTagRow.querySelector<HTMLButtonElement>('button')!)
+    const renameInput = screen.getByLabelText('New name for new tag')
+    await user.clear(renameInput)
+    await user.type(renameInput, 'renamed')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(rename).toHaveBeenCalledWith('new tag', 'renamed'))
+    expect(dialog).toHaveTextContent('renamed')
+
+    const renamedRow = within(dialog).getByText('renamed').closest('.tag-manager-row')!
+    await user.click(Array.from(renamedRow.querySelectorAll('button')).find((button) => button.textContent === 'Delete')!)
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('renamed'))
+    expect(dialog).not.toHaveTextContent('renamed')
   })
 
   it.each([false, true])('keeps selection and confirmed order through a keyboard move (failure=%s)', async (fail) => {

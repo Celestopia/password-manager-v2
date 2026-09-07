@@ -2,11 +2,13 @@ import { useState, type FormEvent } from 'react'
 
 import { Modal } from '../../components/Modal'
 import type { CustomField, RecordDetails, RecordInput } from '../../types'
+import { TagPicker } from './TagPicker'
 
 interface Props {
   mode: 'add' | 'edit'
   initial?: RecordDetails
   customFields?: CustomField[]
+  availableTags: string[]
   busy: boolean
   onClose(): void
   onSubmit(values: RecordInput): Promise<void>
@@ -16,7 +18,7 @@ const blank = {
   account: '', username: '', phonenumber: '', mail: '', date: '', url: '', description: '', tags: [] as string[],
 }
 
-export function RecordDialog({ mode, initial, customFields = [], busy, onClose, onSubmit }: Props) {
+export function RecordDialog({ mode, initial, customFields = [], availableTags, busy, onClose, onSubmit }: Props) {
   const seed = initial ?? blank
   const [account, setAccount] = useState(seed.account)
   const [username, setUsername] = useState(seed.username)
@@ -26,7 +28,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
   const [date, setDate] = useState(seed.date)
   const [url, setUrl] = useState(seed.url)
   const [description, setDescription] = useState(seed.description)
-  const [tags, setTags] = useState(seed.tags.join(', '))
+  const [tags, setTags] = useState(seed.tags)
   const [fields, setFields] = useState<CustomField[]>(customFields)
   const [validation, setValidation] = useState('')
 
@@ -40,7 +42,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
     setValidation('')
     const values: RecordInput = {
       account: account.trim(), username, phonenumber, mail, date, url, description,
-      tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+      tags,
       custom_fields: normalizedFields.map((field) => ({ key: field.key.trim(), value: field.value })),
     }
     if (mode === 'add') values.password = password
@@ -63,7 +65,7 @@ export function RecordDialog({ mode, initial, customFields = [], busy, onClose, 
           <label>Phone number<input value={phonenumber} onChange={(event) => setPhonenumber(event.target.value)} /></label>
           <label>Creation Date<input value={date} placeholder="YYYY-MM-DD or a note" onChange={(event) => setDate(event.target.value)} /></label>
           <label>Website<input type="url" value={url} placeholder="https://example.com" onChange={(event) => setUrl(event.target.value)} /></label>
-          <label className="span-two">Tags<input value={tags} placeholder="game, finance (use comma to separate tags)" onChange={(event) => setTags(event.target.value)} /></label>
+          <div className="span-two form-field"><span className="form-field-label">Tags</span><TagPicker options={availableTags} value={tags} onChange={setTags} /></div>
           <label className="span-two">Description<textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         </div>
         <div className="custom-fields-heading">

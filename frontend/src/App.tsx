@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from './api/client'
 import { ExportDialog } from './features/vault/ExportDialog'
+import { ManageTagsDialog } from './features/vault/ManageTagsDialog'
 import { PasswordDialog } from './features/vault/PasswordDialog'
 import { RecordDialog } from './features/vault/RecordDialog'
 import { RecordList } from './features/vault/RecordList'
 import { filterAndSortRecords, sortDirectionLabel } from './features/vault/recordSorting'
 import type { RecordSortField, SortDirection } from './features/vault/recordSorting'
+import { TagFilter } from './features/vault/TagFilter'
+import { buildTagRegistry } from './features/vault/tagRegistry'
 import { VaultDialog } from './features/vault/VaultDialog'
 import type { CustomField, MovePlacement, RecordDetails, RecordInput, RecordSummary, VaultStatus } from './types'
 
@@ -32,6 +35,7 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [details, setDetails] = useState<RecordDetails | null>(null)
   const [query, setQuery] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortField, setSortField] = useState<RecordSortField>('vault')
   const [sortDirection, setSortDirection] = useState<SortDirection>('ascending')
   const [busy, setBusy] = useState(false)
@@ -43,6 +47,7 @@ export function App() {
   const [noticeRevision, setNoticeRevision] = useState(0)
   const [vaultDialog, setVaultDialog] = useState<VaultDialogState | null>(null)
   const [recordDialog, setRecordDialog] = useState<RecordDialogState | null>(null)
+  const [manageTags, setManageTags] = useState(false)
   const [passwordDialog, setPasswordDialog] = useState(false)
   const [exportDialog, setExportDialog] = useState<'jsonl' | 'csv' | null>(null)
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null)
@@ -63,6 +68,8 @@ export function App() {
   const refreshRecords = async (preferredId?: string | null) => {
     const [nextRecords, nextStatus] = await Promise.all([api.list(''), api.status()])
     setRecords(nextRecords)
+    const availableTags = new Set(buildTagRegistry(nextRecords).map((tag) => tag.name))
+    setSelectedTags((current) => current.filter((tag) => availableTags.has(tag)))
     setStatus(nextStatus)
     const candidate = preferredId === undefined ? selectedId : preferredId
     if (candidate && nextRecords.some((record) => record.id === candidate)) {
@@ -107,15 +114,18 @@ export function App() {
     return () => window.clearTimeout(timeout)
   }, [error, errorRevision])
 
+  const tagRegistry = useMemo(() => buildTagRegistry(records), [records])
+  const tagNames = useMemo(() => tagRegistry.map((tag) => tag.name), [tagRegistry])
   const visibleRecords = useMemo(
-    () => filterAndSortRecords(records, query, sortField, sortDirection),
-    [query, records, sortDirection, sortField],
+    () => filterAndSortRecords(records, query, sortField, sortDirection, selectedTags),
+    [query, records, selectedTags, sortDirection, sortField],
   )
+
   const directionLabel = sortDirectionLabel(sortField, sortDirection)
   const reorderDisabledReason = busy ? 'Wait for the current operation to finish.'
-    : recordDialog || passwordDialog || exportDialog ? 'Close the dialog before reordering.'
-    : sortField !== 'vault' || sortDirection !== 'ascending' || query.length > 0
-      ? 'To reorder, select default sorting with the upward arrow and clear the search.'
+    : recordDialog || passwordDialog || exportDialog || manageTags ? 'Close the dialog before reordering.'
+    : sortField !== 'vault' || sortDirection !== 'ascending' || query.length > 0 || selectedTags.length > 0
+      ? 'To reorder, select default sorting with the upward arrow and clear the search and tag filters.'
       : null
 
   const moveRecord = async (id: string, targetId: string, placement: MovePlacement) => {
@@ -155,6 +165,7 @@ export function App() {
         : await api.create(vaultDialog.path, values.password, values.overwrite, values.memoryMiB)
       setStatus(nextStatus)
       setVaultDialog(null)
+      setSelectedTags([])
       setRecords(await api.list(''))
       showNotice(vaultDialog.mode === 'unlock' ? 'Vault unlocked.' : 'Vault created and unlocked.')
     } catch (caught) {
@@ -172,6 +183,8 @@ export function App() {
       setSelectedId(null)
       setDetails(null)
       setQuery('')
+      setSelectedTags([])
+      setManageTags(false)
       setRevealedPassword(null)
       setRevealedFields(null)
       setExportDialog(null)
@@ -239,6 +252,48 @@ export function App() {
       showNotice('Account entry deleted.')
     } catch (caught) {
       showError(caught)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const renameTag = async (oldName: string, newName: string) => {
+    setBusy(true)
+    setError('')
+    try {
+      const result = await api.renameTag(oldName, newName)
+      setRecords(result.records)
+      setSelectedTags((current) => Array.from(new Set(current.map((tag) => tag === oldName ? newName : tag))))
+      setDetails((current) => {
+        if (!current) return current
+        const summary = result.records.find((record) => record.id === current.id)
+        return summary ? { ...current, ...summary } : current
+      })
+      showNotice(result.changed ? `Tag “${oldName}” renamed.` : 'No account entries required an update.')
+    } catch (caught) {
+      showError(caught)
+      throw caught
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteTag = async (name: string) => {
+    setBusy(true)
+    setError('')
+    try {
+      const result = await api.deleteTag(name)
+      setRecords(result.records)
+      setSelectedTags((current) => current.filter((tag) => tag !== name))
+      setDetails((current) => {
+        if (!current) return current
+        const summary = result.records.find((record) => record.id === current.id)
+        return summary ? { ...current, ...summary } : current
+      })
+      showNotice(result.changed ? `Tag “${name}” removed from all account entries.` : 'No account entries required an update.')
+    } catch (caught) {
+      showError(caught)
+      throw caught
     } finally {
       setBusy(false)
     }
@@ -377,6 +432,7 @@ export function App() {
             <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" disabled={busy || reordering} onChange={(event) => setQuery(event.target.value)} /></label>
             <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })} disabled={busy || reordering}>+ Add</button>
           </div>
+          <TagFilter tags={tagRegistry} selected={selectedTags} disabled={busy || reordering} onChange={setSelectedTags} />
           <div className="records-caption">
             <span>{visibleRecords.length} of {records.length} entries</span>
             <div className="sort-controls">
@@ -406,11 +462,12 @@ export function App() {
             </div>
           </div>
           <RecordList records={visibleRecords} selectedId={selectedId} disabledReason={reorderDisabledReason}
-            emptyMessage={records.length ? 'No entries match your search.' : 'Your vault is empty.'}
+            emptyMessage={records.length ? 'No entries match your filters.' : 'Your vault is empty.'}
             onSelect={(id) => void selectRecord(id)} onMove={moveRecord} onActiveChange={setReordering} />
           <div className="records-footer">
-            <div className="file-action-group"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()} disabled={busy || reordering}>JSONL</button></div>
-            <div className="file-action-group"><span>Export:</span><button className="button-quiet" aria-label="Export JSONL" onClick={() => setExportDialog('jsonl')} disabled={busy || reordering}>JSONL</button><button className="button-quiet" aria-label="Export CSV" onClick={() => setExportDialog('csv')} disabled={busy || reordering}>CSV</button></div>
+            <div className="file-action-group import-actions"><span>Import:</span><button className="button-quiet" aria-label="Import JSONL" onClick={() => void importRecords()} disabled={busy || reordering}>JSONL</button></div>
+            <div className="file-action-group export-actions"><span>Export:</span><button className="button-quiet" aria-label="Export JSONL" onClick={() => setExportDialog('jsonl')} disabled={busy || reordering}>JSONL</button><button className="button-quiet" aria-label="Export CSV" onClick={() => setExportDialog('csv')} disabled={busy || reordering}>CSV</button></div>
+            <button type="button" className="button-quiet manage-tags-button" onClick={() => setManageTags(true)} disabled={busy || reordering}>Manage tags</button>
           </div>
         </aside>
         <section className="detail-pane">
@@ -426,7 +483,8 @@ export function App() {
           </>}
         </section>
       </div>
-      {recordDialog && <RecordDialog {...recordDialog} busy={busy} onClose={() => setRecordDialog(null)} onSubmit={saveRecord} />}
+      {recordDialog && <RecordDialog {...recordDialog} availableTags={tagNames} busy={busy} onClose={() => setRecordDialog(null)} onSubmit={saveRecord} />}
+      {manageTags && <ManageTagsDialog tags={tagRegistry} busy={busy} onClose={() => setManageTags(false)} onRename={renameTag} onDelete={deleteTag} />}
       {passwordDialog && <PasswordDialog busy={busy} onClose={() => setPasswordDialog(false)} onSubmit={changePassword} />}
       {exportDialog && <ExportDialog format={exportDialog} busy={busy} onClose={() => { if (!busy) setExportDialog(null) }} onSubmit={exportRecords} />}
     </div>

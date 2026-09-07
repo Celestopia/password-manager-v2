@@ -8,7 +8,9 @@ Argon2id and ChaCha20-Poly1305.
 ## What it provides
 
 - Create, open, search, sort, edit, and delete password records.
-- Store tags and encrypted custom fields.
+- Select or create tags from the account editor and filter accounts by multiple tags.
+- Rename, merge, or remove tags across the vault through the derived tag registry.
+- Store encrypted custom fields.
 - Sort entries by account name, vault order, creation time, or update time.
 - Drag an entry's grip handle to change the saved default order.
 - Reveal passwords explicitly or copy them through the native clipboard.
@@ -57,8 +59,17 @@ The GUI uses native file dialogs for vault, import, and export paths. A new
 master password must contain at least 12 characters. The default Argon2id memory
 setting is 64 MiB.
 
+The tag selector below account search is derived from tags already assigned to
+entries; no separate registry is stored. Selecting multiple tags shows only
+accounts containing every selected tag. Its dropdown floats over the sidebar,
+so opening it does not reduce the account-list area. The editor provides the
+same registry as a searchable multi-select and can create a tag by attaching it
+to the account being saved. Registry management can rename, merge, or remove a
+tag from every affected entry in one operation. A tag disappears from the
+registry when no account uses it.
+
 Reordering is available only with `default` sorting, the upward direction arrow,
-and an empty search box. Drag the small grip beside an entry and drop at the
+an empty search box, and no active tag filters. Drag the small grip beside an entry and drop at the
 insertion line; the list scrolls automatically near its edges. Keyboard users
 can focus the grip, press Space to pick up, use Up/Down (or Home/End) to move,
 and press Space or Enter to save. Escape cancels. Each move saves immediately

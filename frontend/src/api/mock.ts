@@ -54,6 +54,33 @@ export const mockNativeApi: NativeApi = {
   async add_record(values) { const now = new Date().toISOString(); const record: MockRecord = { ...values, password: values.password ?? '', id: crypto.randomUUID(), created_at: now, updated_at: now, has_custom_fields: values.custom_fields.length > 0 }; records.push(record); return ok(summary(record)) },
   async update_record(recordId, values) { const record = records.find((item) => item.id === recordId)!; Object.assign(record, values); if (values.password_change !== undefined) record.password = values.password_change; record.has_custom_fields = record.custom_fields.length > 0; record.updated_at = new Date().toISOString(); return ok(summary(record)) },
   async delete_record(recordId) { const index = records.findIndex((item) => item.id === recordId); const [record] = records.splice(index, 1); return ok(summary(record)) },
+  async rename_tag(oldName, newName) {
+    let changed = false
+    const updatedAt = new Date().toISOString()
+    records.forEach((record) => {
+      if (!record.tags.includes(oldName)) return
+      const nextTags = Array.from(new Set(record.tags.map((tag) => tag === oldName ? newName.trim() : tag)))
+      if (nextTags.join('\0') !== record.tags.join('\0')) {
+        record.tags = nextTags
+        record.updated_at = updatedAt
+        changed = true
+      }
+    })
+    return ok({ changed, records: records.map(summary) })
+  },
+  async delete_tag(name) {
+    let changed = false
+    const updatedAt = new Date().toISOString()
+    records.forEach((record) => {
+      const nextTags = record.tags.filter((tag) => tag !== name)
+      if (nextTags.length !== record.tags.length) {
+        record.tags = nextTags
+        record.updated_at = updatedAt
+        changed = true
+      }
+    })
+    return ok({ changed, records: records.map(summary) })
+  },
   async import_jsonl() { return ok({ imported_count: 0, skipped_count: 0 }) },
   async export_records(path, format) { if (!exportAuthorized) return failure('PERMISSION_DENIED', 'Plaintext export requires fresh master-password authorization.'); exportAuthorized = false; return ok({ path, format }) },
   async change_master_password() { return ok({ changed: true }) },

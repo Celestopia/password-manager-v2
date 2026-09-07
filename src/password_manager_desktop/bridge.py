@@ -146,6 +146,17 @@ class DesktopBridge:
             )
         )
 
+    def rename_tag(self, old_name: object, new_name: object) -> dict[str, object]:
+        return self._call(
+            lambda: self._session.rename_tag(
+                self._require_string(old_name, "old_name"),
+                self._require_string(new_name, "new_name"),
+            )
+        )
+
+    def delete_tag(self, name: object) -> dict[str, object]:
+        return self._call(lambda: self._session.delete_tag(self._require_string(name, "name")))
+
     def import_jsonl(self, path: object) -> dict[str, object]:
         return self._call(
             lambda: self._session.import_jsonl(self._authorized_path(path, "import", consume=True))
