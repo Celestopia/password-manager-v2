@@ -38,6 +38,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         width=1240,
         height=780,
         min_size=(960, 620),
+        maximized=True,
         background_color="#0b1120",
         text_select=True,
         zoomable=False,

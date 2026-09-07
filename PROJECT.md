@@ -430,7 +430,8 @@ The packaged executable is
 `release/PasswordManagerV2/PasswordManagerV2.exe`. Its `_internal` directory
 contains Python, WebView2 loader assemblies, and frontend assets and must remain
 adjacent. PyInstaller embeds `assets/pm-icon.ico` into the executable and bundles
-the same file for the pywebview window icon. The build does not create an
+the same file for the pywebview window icon. The desktop window starts maximized
+while retaining its standard title bar and window controls. The build does not create an
 installer, ship the evergreen WebView2 runtime, sign the executable, or publish
 artifacts.
 

@@ -3,6 +3,7 @@
 import struct
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -46,3 +47,24 @@ def test_frozen_installation_directory_is_executable_parent(
     monkeypatch.setattr(sys, "executable", str(executable))
 
     assert installation_directory() == tmp_path
+
+
+def test_desktop_window_starts_maximized(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import password_manager_desktop.app as desktop_app
+
+    index = tmp_path / "index.html"
+    icon = tmp_path / "icon.ico"
+    index.write_text("<!doctype html>", encoding="utf-8")
+    icon.write_bytes(b"test icon")
+    window = MagicMock()
+    create_window = MagicMock(return_value=window)
+    start = MagicMock()
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(desktop_app, "frontend_index", lambda: index)
+    monkeypatch.setattr(desktop_app, "application_icon", lambda: icon)
+    monkeypatch.setattr(desktop_app.webview, "create_window", create_window)
+    monkeypatch.setattr(desktop_app.webview, "start", start)
+
+    assert desktop_app.main([]) == 0
+    assert create_window.call_args.kwargs["maximized"] is True
+    start.assert_called_once_with(gui="edgechromium", debug=False, private_mode=True, icon=str(icon))
