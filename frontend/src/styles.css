@@ -143,7 +143,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .detail-card dl > div:last-child { padding-bottom: 0; border: 0; }
 .detail-card dt, .metadata-card span { color: #8a91a3; font-size: .68rem; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
 .detail-card dd { margin: .25rem 0 0; overflow-wrap: anywhere; color: #2f3549; font-size: .86rem; }
-.detail-card a { color: #4f46d8; }
+.detail-card a { color: #5146d9; font-weight: 600; text-decoration: none; transition: color .15s ease; }
+.detail-card a:visited { color: #5146d9; }
+.detail-card a:hover { color: #3730a3; }
+.detail-card a:active { color: #312e81; }
 .muted { color: #9298a8; font-size: .85rem; }
 .metadata-card { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(2.25rem, 1fr) auto; gap: .75rem 1rem; grid-column: 1 / -1; padding-block: 1rem; }
 .metadata-card > div:first-child { min-height: 0; grid-column: 1 / -1; overflow-x: hidden; overflow-y: auto; }
