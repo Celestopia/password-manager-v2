@@ -311,8 +311,8 @@ export function App() {
   const copyPassword = async () => {
     if (!details) return
     try {
-      const result = await api.copyPassword(details.id)
-      showNotice(`Password copied. It will be cleared in ${result.clear_after_seconds} seconds if unchanged.`)
+      await api.copyPassword(details.id)
+      showNotice('Password copied.')
     } catch (caught) {
       showError(caught)
     }

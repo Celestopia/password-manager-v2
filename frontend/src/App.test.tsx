@@ -97,6 +97,9 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: 'Reveal' }))
     expect(await screen.findByText('demo-password')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Password copied.')
+    expect(screen.getByRole('status')).not.toHaveTextContent('cleared')
   })
 
   it('validates new vault password confirmation before creating', async () => {

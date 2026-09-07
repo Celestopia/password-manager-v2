@@ -25,7 +25,7 @@ export interface NativeApi {
   list_records(query: string): Promise<ApiResponse<RecordSummary[]>>
   get_record_details(recordId: string): Promise<ApiResponse<RecordDetails>>
   reveal_password(recordId: string): Promise<ApiResponse<{ password: string }>>
-  copy_password(recordId: string): Promise<ApiResponse<{ clear_after_seconds: number }>>
+  copy_password(recordId: string): Promise<ApiResponse<{ copied: boolean }>>
   reveal_custom_fields(recordId: string): Promise<ApiResponse<CustomField[]>>
   add_record(values: RecordInput): Promise<ApiResponse<RecordSummary>>
   update_record(recordId: string, values: Partial<RecordInput>): Promise<ApiResponse<RecordSummary>>

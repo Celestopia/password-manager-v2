@@ -13,13 +13,13 @@ operation flows.
 - File operations require a one-shot native-dialog path grant for their exact
   purpose. Plaintext export also requires explicit confirmation and fresh
   master-password reauthentication. A mismatch immediately locks the vault and
-  clears application-managed clipboard content.
+  leaves clipboard content unchanged.
 - JSONL import is merge-only. Identical existing IDs are skipped, different
   content under an existing ID aborts the entire transaction, and no import path
   can replace all current records.
 - Passwords and custom-field values are omitted from list/detail responses.
   Reveal is explicit, password display auto-hides after 10 seconds, and native
-  clipboard content is cleared after 30 seconds only if still unchanged.
+  password copies bypass renderer memory.
 - Vault writes use Argon2id, ChaCha20-Poly1305, fresh salts/nonces, bounds checked
   before key derivation, encrypted backups, atomic replacement, strict locking,
   and external-change detection.
@@ -33,8 +33,9 @@ operation flows.
   must press **Lock vault** or close the application when leaving the machine.
 - Explicit reveal places one secret in renderer memory for up to 10 seconds.
   Custom-field values remain until hidden, another record is selected, editing
-  starts, or the vault locks. Copy avoids renderer exposure but the Windows
-  clipboard is visible to other local processes during its 30-second lifetime.
+  starts, or the vault locks. Copy avoids renderer exposure, but the Windows
+  clipboard remains visible to other local processes until the user or another
+  application replaces it. Locking and shutdown do not clear it.
 - Plaintext JSONL/CSV import and export files are outside vault protection. The
   app warns before using them; exports additionally require master-password
   reauthentication and grant one operation for at most five minutes. Deletion

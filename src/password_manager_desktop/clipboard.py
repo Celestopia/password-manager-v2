@@ -9,15 +9,13 @@ from ctypes import wintypes
 
 
 class WindowsClipboard:
-    """Copy a secret and clear it later only when it is still unchanged."""
+    """Copy a secret directly to the Windows clipboard."""
 
     CF_UNICODETEXT = 13
     GMEM_MOVEABLE = 0x0002
 
     def __init__(self) -> None:
         self._guard = threading.RLock()
-        self._managed_secret: str | None = None
-        self._timer: threading.Timer | None = None
         self._user32 = ctypes.WinDLL("user32", use_last_error=True)
         self._kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         self._configure_functions()
@@ -29,8 +27,6 @@ class WindowsClipboard:
         self._user32.CloseClipboard.restype = wintypes.BOOL
         self._user32.EmptyClipboard.argtypes = []
         self._user32.EmptyClipboard.restype = wintypes.BOOL
-        self._user32.GetClipboardData.argtypes = [wintypes.UINT]
-        self._user32.GetClipboardData.restype = wintypes.HANDLE
         self._user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
         self._user32.SetClipboardData.restype = wintypes.HANDLE
         self._kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
@@ -42,34 +38,11 @@ class WindowsClipboard:
         self._kernel32.GlobalFree.argtypes = [wintypes.HGLOBAL]
         self._kernel32.GlobalFree.restype = wintypes.HGLOBAL
 
-    def copy_secret(self, secret: str, *, clear_after_seconds: int = 30) -> None:
-        """Place ``secret`` on the clipboard and schedule conditional clearing."""
+    def copy_secret(self, secret: str) -> None:
+        """Place ``secret`` on the clipboard until another application replaces it."""
 
         with self._guard:
             self._set_text(secret)
-            self._managed_secret = secret
-            if self._timer is not None:
-                self._timer.cancel()
-            self._timer = threading.Timer(clear_after_seconds, self.clear_managed)
-            self._timer.daemon = True
-            self._timer.start()
-
-    def clear_managed(self) -> None:
-        """Clear only the secret copied by this application if still present."""
-
-        with self._guard:
-            secret = self._managed_secret
-            self._managed_secret = None
-            if self._timer is not None:
-                self._timer.cancel()
-                self._timer = None
-            if secret is None:
-                return
-            try:
-                if self._get_text() == secret:
-                    self._clear()
-            except OSError:
-                return
 
     def _open(self) -> None:
         for _ in range(10):
@@ -100,27 +73,3 @@ class WindowsClipboard:
             self._user32.CloseClipboard()
             if handle:
                 self._kernel32.GlobalFree(handle)
-
-    def _get_text(self) -> str:
-        self._open()
-        try:
-            handle = self._user32.GetClipboardData(self.CF_UNICODETEXT)
-            if not handle:
-                return ""
-            pointer = self._kernel32.GlobalLock(handle)
-            if not pointer:
-                return ""
-            try:
-                return ctypes.wstring_at(pointer)
-            finally:
-                self._kernel32.GlobalUnlock(handle)
-        finally:
-            self._user32.CloseClipboard()
-
-    def _clear(self) -> None:
-        self._open()
-        try:
-            self._user32.EmptyClipboard()
-        finally:
-            self._user32.CloseClipboard()
-

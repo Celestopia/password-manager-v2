@@ -91,11 +91,12 @@ Plaintext export additionally requires a fresh master-password check enforced
 by `VaultSession`. Success creates a bridge-local, single-use authorization that
 expires after five minutes. Cancellation, timeout, explicit locking, shutdown,
 or one export revokes it. One password mismatch immediately locks the session
-and clears application-managed clipboard content.
+without modifying clipboard content.
 
 `WindowsClipboard` writes copied passwords without returning them to the
-renderer. It clears after 30 seconds only if the clipboard still contains the
-application-managed value. `resources.py` resolves the built frontend from the
+renderer. Copied passwords remain in the Windows clipboard until the user or
+another application replaces them; locking and shutdown do not modify clipboard
+content. `resources.py` resolves the built frontend from the
 repository in source runs and PyInstaller's `_MEIPASS` in packaged runs. It also
 resolves the application ICO so source windows and packaged windows use the same
 visual identity.
@@ -264,9 +265,9 @@ overwrite retains the previous encrypted file as `.pmdb.bak`.
 
 Unlock acquires the lock before reading, authenticates and normalizes the whole
 payload, then publishes the snapshot. Failure releases the lock and leaves the
-session locked. Locking clears session references, clears application-managed
-clipboard content, and releases the OS lock. Window closure invokes the same
-cleanup. Python cannot guarantee physical memory zeroization.
+session locked. Locking clears session references and releases the OS lock.
+Window closure invokes the same cleanup without modifying clipboard content.
+Python cannot guarantee physical memory zeroization.
 
 ### 6.2 Reads and secret access
 
@@ -469,8 +470,8 @@ Keep contracts and documentation synchronized:
   fingerprints still catch non-cooperating writers.
 - **One-shot path grants:** Native selection constrains filesystem effects
   without a general renderer file API.
-- **Native clipboard:** Copies avoid JavaScript but remain temporarily visible to
-  other local processes.
+- **Native clipboard:** Copies avoid JavaScript but remain visible to other local
+  processes until the user or another application replaces the clipboard.
 - **No automatic lock:** This product decision increases the importance of
   explicit lock and close cleanup.
 - **Encrypted backups:** Recoverability is favored over invalidating the prior

@@ -17,11 +17,8 @@ class FakeClipboard:
     def __init__(self) -> None:
         self.secret: str | None = None
 
-    def copy_secret(self, secret: str, *, clear_after_seconds: int = 30) -> None:
+    def copy_secret(self, secret: str) -> None:
         self.secret = secret
-
-    def clear_managed(self) -> None:
-        self.secret = None
 
 
 def assert_data(response: dict[str, object]) -> object:
@@ -68,9 +65,13 @@ def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path:
     assert "1234" not in repr(details)
 
     copy_result = bridge.copy_password(record_id)
+    assert assert_data(copy_result) == {"copied": True}
     assert "native-only-secret" not in repr(copy_result)
     assert clipboard.secret == "native-only-secret"
+    bridge.lock_vault()
+    assert clipboard.secret == "native-only-secret"
     bridge._shutdown()
+    assert clipboard.secret == "native-only-secret"
 
     denied = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
     response = denied.unlock_vault(str(path), MASTER_PASSWORD)
@@ -146,7 +147,7 @@ def test_bridge_requires_one_shot_export_reauthentication(tmp_path: Path) -> Non
     }
 
 
-def test_failed_export_reauthentication_locks_and_clears_clipboard(tmp_path: Path) -> None:
+def test_failed_export_reauthentication_locks_without_clearing_clipboard(tmp_path: Path) -> None:
     vault_path = (tmp_path / "failed-export-auth.pmdb").resolve()
     clipboard = FakeClipboard()
     clipboard.secret = "managed secret"
@@ -168,7 +169,7 @@ def test_failed_export_reauthentication_locks_and_clears_clipboard(tmp_path: Pat
         "vault_path": None,
         "record_count": 0,
     }
-    assert clipboard.secret is None
+    assert clipboard.secret == "managed secret"
 
 
 def test_bridge_reports_merge_counts_and_import_conflicts(tmp_path: Path) -> None:

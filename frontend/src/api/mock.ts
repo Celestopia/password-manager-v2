@@ -49,7 +49,7 @@ export const mockNativeApi: NativeApi = {
   async list_records(query) { const needle = query.toLocaleLowerCase(); return ok(records.filter((record) => record.account.toLocaleLowerCase().includes(needle)).map(summary)) },
   async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), description: record.description, has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
   async reveal_password(recordId) { return ok({ password: records.find((item) => item.id === recordId)!.password }) },
-  async copy_password() { return ok({ clear_after_seconds: 30 }) },
+  async copy_password() { return ok({ copied: true }) },
   async reveal_custom_fields(recordId) { return ok(records.find((item) => item.id === recordId)!.custom_fields) },
   async add_record(values) { const now = new Date().toISOString(); const record: MockRecord = { ...values, password: values.password ?? '', id: crypto.randomUUID(), created_at: now, updated_at: now, has_custom_fields: values.custom_fields.length > 0 }; records.push(record); return ok(summary(record)) },
   async update_record(recordId, values) { const record = records.find((item) => item.id === recordId)!; Object.assign(record, values); if (values.password_change !== undefined) record.password = values.password_change; record.has_custom_fields = record.custom_fields.length > 0; record.updated_at = new Date().toISOString(); return ok(summary(record)) },

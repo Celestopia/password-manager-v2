@@ -49,7 +49,6 @@ class DesktopBridge:
 
     def _shutdown(self) -> None:
         self._revoke_export_authorization()
-        self._clipboard.clear_managed()
         self._session.lock()
 
     def get_status(self) -> dict[str, object]:
@@ -99,7 +98,6 @@ class DesktopBridge:
     def lock_vault(self) -> dict[str, object]:
         def lock() -> dict[str, object]:
             self._revoke_export_authorization()
-            self._clipboard.clear_managed()
             return self._session.lock()
 
         return self._call(lock)
@@ -114,10 +112,10 @@ class DesktopBridge:
         return self._call(lambda: {"password": self._session.reveal_password(self._require_string(record_id, "record_id"))})
 
     def copy_password(self, record_id: object) -> dict[str, object]:
-        def copy_password() -> dict[str, int]:
+        def copy_password() -> dict[str, bool]:
             secret = self._session.password_for_clipboard(self._require_string(record_id, "record_id"))
-            self._clipboard.copy_secret(secret, clear_after_seconds=30)
-            return {"clear_after_seconds": 30}
+            self._clipboard.copy_secret(secret)
+            return {"copied": True}
 
         return self._call(copy_password)
 
@@ -165,13 +163,9 @@ class DesktopBridge:
     def authorize_export(self, master_password: object) -> dict[str, object]:
         def authorize() -> dict[str, bool]:
             self._revoke_export_authorization()
-            try:
-                self._session.authorize_plaintext_export(
-                    self._require_string(master_password, "master_password")
-                )
-            except VaultAuthenticationError:
-                self._clipboard.clear_managed()
-                raise
+            self._session.authorize_plaintext_export(
+                self._require_string(master_password, "master_password")
+            )
             with self._export_authorization_lock:
                 self._export_authorized_until = time.monotonic() + self._EXPORT_AUTHORIZATION_SECONDS
             return {"authorized": True}

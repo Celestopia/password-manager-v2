@@ -14,7 +14,7 @@ Argon2id and ChaCha20-Poly1305.
 - Sort entries by account name, vault order, creation time, or update time.
 - Drag an entry's grip handle to change the saved default order.
 - Reveal passwords explicitly or copy them through the native clipboard.
-- Clear copied passwords after 30 seconds when the clipboard is unchanged.
+- Leave copied passwords in the Windows clipboard until they are replaced.
 - Hide a revealed password again after 10 seconds.
 - Import complete records from JSONL and explicitly export plaintext JSONL/CSV.
 - Rotate the master password and retain encrypted recovery backups.
@@ -78,7 +78,7 @@ without changing entry timestamps; there is no Undo action.
 JSONL and CSV exports contain plaintext secrets. Choosing either export format
 opens a password panel before the save dialog. Re-enter the current master
 password to authorize one export; one incorrect attempt immediately locks the
-vault and clears application-managed clipboard content.
+vault without modifying clipboard content.
 
 For frontend-only development with synthetic in-memory data:
 
