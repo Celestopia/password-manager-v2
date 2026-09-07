@@ -90,6 +90,10 @@ describe('App', () => {
     expect(document.querySelector('.large-avatar')).toBeNull()
     expect(document.querySelectorAll('.identity-card dl > div')).toHaveLength(5)
     expect(document.querySelector('.description-card button')).toBeNull()
+    const website = screen.getByRole('link', { name: 'https://example.com' })
+    expect(website).toHaveAttribute('href', 'https://example.com/')
+    expect(website).toHaveAttribute('target', '_blank')
+    expect(website).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.queryByText('C:\\Mock\\vault.pmdb')).not.toBeInTheDocument()
     expect(screen.getAllByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)).toHaveLength(2)
     expect(await screen.findByText('••••••••••••')).toBeInTheDocument()
@@ -205,6 +209,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('button', { name: '+ Add' }))
 
     expect(screen.getByLabelText('Creation Date')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('https://example.com/')).toBeInTheDocument()
     expect(screen.getByLabelText('Description')).toHaveAttribute('rows', '2')
     expect(screen.getByRole('button', { name: 'Select tags' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Select tags' }))

@@ -64,7 +64,7 @@ export function RecordDialog({ mode, initial, customFields = [], availableTags, 
           <label>Email<input type="email" value={mail} onChange={(event) => setMail(event.target.value)} /></label>
           <label>Phone number<input value={phonenumber} onChange={(event) => setPhonenumber(event.target.value)} /></label>
           <label>Creation Date<input value={date} placeholder="YYYY-MM-DD or a note" onChange={(event) => setDate(event.target.value)} /></label>
-          <label>Website<input type="url" value={url} placeholder="https://example.com" onChange={(event) => setUrl(event.target.value)} /></label>
+          <label>Website<input type="url" value={url} placeholder="https://example.com/" onChange={(event) => setUrl(event.target.value)} /></label>
           <div className="span-two form-field"><span className="form-field-label">Tags</span><TagPicker options={availableTags} value={tags} onChange={setTags} /></div>
           <label className="span-two">Description<textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
         </div>

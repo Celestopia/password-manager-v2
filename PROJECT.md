@@ -115,7 +115,10 @@ development mode. Persistent changes are returned by Python and followed by a
 refresh when required.
 
 Production assets use relative URLs and a Content Security Policy with
-`connect-src 'none'`. Stored website values are text, not navigation targets.
+`connect-src 'none'`. Valid absolute HTTP and HTTPS website values are rendered
+as `target="_blank"` links that pywebview opens in the system browser. Other
+schemes and malformed values remain plain text, and the embedded application
+view does not navigate away.
 Global success and error banners share a five-second dismissal lifecycle and
 remain manually dismissible; inline form validation persists until corrected or
 the dialog closes.
@@ -233,7 +236,7 @@ Every record contains exactly these fields:
 | `phonenumber` | string | Optional free text. |
 | `mail` | string | Optional free text. |
 | `date` | string | Optional free text. |
-| `url` | string | Optional text; the UI does not navigate to it. |
+| `url` | string | Optional text; absolute HTTP and HTTPS values open externally, while other values remain plain text. |
 | `description` | string | Required free-form text that may be empty; line breaks are preserved. |
 | `custom_fields` | array | Unique non-empty string keys with string values. |
 | `tags` | string array | Ordered labels; GUI/session inputs are trimmed and exact duplicates are removed. |

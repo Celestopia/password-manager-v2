@@ -9,7 +9,8 @@ operation flows.
 - The application is offline and starts no listening network service.
 - Production rendering uses a bundled local page with pywebview debug mode off.
 - The bridge exposes business methods only; there is no arbitrary file, shell,
-  Python evaluation, or generic URL-opening method.
+  Python evaluation, or generic URL-opening method. Website anchors are limited
+  to absolute HTTP and HTTPS URLs and open in the system browser.
 - File operations require a one-shot native-dialog path grant for their exact
   purpose. Plaintext export also requires explicit confirmation and fresh
   master-password reauthentication. A mismatch immediately locks the vault and

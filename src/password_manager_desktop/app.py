@@ -29,6 +29,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if arguments:
         raise ValueError(f"Unsupported argument(s): {' '.join(arguments)}")
+    webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
     bridge = DesktopBridge()
     window = webview.create_window(
         "Password Manager v2",

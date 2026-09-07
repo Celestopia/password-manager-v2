@@ -14,6 +14,7 @@ Argon2id and ChaCha20-Poly1305.
 - Sort entries by account name, vault order, creation time, or update time.
 - Drag an entry's grip handle to change the saved default order.
 - Reveal passwords explicitly or copy them through the native clipboard.
+- Open valid HTTP and HTTPS account websites in the system browser.
 - Leave copied passwords in the Windows clipboard until they are replaced.
 - Hide a revealed password again after 10 seconds.
 - Import complete records from JSONL and explicitly export plaintext JSONL/CSV.
