@@ -263,8 +263,12 @@ migration.
 ### 6.1 Create, unlock, and lock
 
 Create validates a master password of at least 12 characters and a supported
-memory cost, acquires the sibling lock, and writes an empty vault. Explicit
-overwrite retains the previous encrypted file as `.pmdb.bak`.
+memory cost, acquires the sibling lock, and writes an empty vault. Creation rejects
+existing destinations; there is no overwrite option or CLI `--force` flag.
+A flushed temporary file is published with Windows `os.rename`, which refuses an
+existing destination even if it appeared after the initial check. Failed creation
+preserves the destination and backup, cleans up the temporary file, and releases
+session ownership. Ordinary updates still use atomic replacement and backups.
 
 Unlock acquires the lock before reading, authenticates and normalizes the whole
 payload, then publishes the snapshot. Failure releases the lock and leaves the

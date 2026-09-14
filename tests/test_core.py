@@ -98,11 +98,45 @@ def test_vault_write_detects_conflicts_and_keeps_overwrite_backup(tmp_path: Path
         )
 
 
+def test_create_rejects_existing_vault_and_preserves_backup(tmp_path: Path) -> None:
+    path = tmp_path / "existing.pmdb"
+    initialize_vault(path, MASTER_PASSWORD, kdf_profile=FAST_KDF)
+    original = path.read_bytes()
+    backup = path.with_suffix(".pmdb.bak")
+    backup.write_bytes(b"previous encrypted backup")
+    session = VaultSession()
+    with pytest.raises(FileExistsError, match="Choose a different name"):
+        session.create(path, MASTER_PASSWORD, memory_mib=8)
+    assert not session.unlocked
+    assert path.read_bytes() == original
+    assert backup.read_bytes() == b"previous encrypted backup"
+    try:
+        session.unlock(path, MASTER_PASSWORD)
+    finally:
+        session.lock()
+
+
+def test_create_refuses_destination_appearing_during_encryption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "racing.pmdb"
+    def racing_encrypt(*args: object, **kwargs: object) -> bytes:
+        path.write_bytes(b"competing vault")
+        return b"new encrypted vault"
+
+    monkeypatch.setattr("password_manager_core.vault.encrypt_payload", racing_encrypt)
+    with pytest.raises(FileExistsError, match="Choose a different name"):
+        initialize_vault(path, MASTER_PASSWORD)
+    assert path.read_bytes() == b"competing vault"
+    assert not path.with_suffix(".pmdb.bak").exists()
+    assert list(tmp_path.iterdir()) == [path]
+
+
 def test_session_mutations_persist_without_exposing_secrets(tmp_path: Path) -> None:
     path = tmp_path / "session.pmdb"
     export_path = tmp_path / "export.jsonl"
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
 
     summary = session.add_record(
         {
@@ -145,7 +179,7 @@ def test_empty_password_survives_storage_export_import_and_edits(tmp_path: Path,
     path = tmp_path / "empty.pmdb"
     exported = tmp_path / "empty.jsonl"
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
     try:
         saved = session.add_record({"account": "Passwordless", **values})
         record_id = str(saved["id"])
@@ -173,7 +207,7 @@ def test_import_merges_new_records_and_skips_identical_records(tmp_path: Path) -
     session = VaultSession()
     first = new_record(account="Existing", username="alice", password="secret")
     second = new_record(account="New", username="bob", password="new secret")
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
 
     source.write_bytes(records_to_jsonl([first]))
     assert session.import_jsonl(source) == {"imported_count": 1, "skipped_count": 0}
@@ -196,7 +230,7 @@ def test_import_conflict_rejects_the_entire_merge(tmp_path: Path) -> None:
     session = VaultSession()
     existing = new_record(account="Existing", password="secret")
     not_imported = new_record(account="Must not be imported", password="secret")
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
     source.write_bytes(records_to_jsonl([existing]))
     session.import_jsonl(source)
     vault_before_conflict = path.read_bytes()
@@ -218,7 +252,7 @@ def test_import_rejects_duplicate_ids_within_the_source_file(tmp_path: Path) -> 
     encoded = json.dumps(duplicate, ensure_ascii=False, separators=(",", ":"))
     source.write_text(f"{encoded}\n{encoded}\n", encoding="utf-8")
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
 
     with pytest.raises(RecordValidationError, match="Duplicate record id"):
         session.import_jsonl(source)
@@ -229,7 +263,7 @@ def test_import_rejects_duplicate_ids_within_the_source_file(tmp_path: Path) -> 
 def test_export_reauthentication_locks_session_after_one_failure(tmp_path: Path) -> None:
     path = tmp_path / "reauth.pmdb"
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
 
     session.authorize_plaintext_export(MASTER_PASSWORD)
     assert session.unlocked is True
@@ -264,7 +298,7 @@ def test_strict_lock_blocks_a_second_session(tmp_path: Path) -> None:
     first = VaultSession()
     second = VaultSession()
     try:
-        first.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+        first.create(path, MASTER_PASSWORD, memory_mib=8)
         with pytest.raises(VaultBusyError):
             second.unlock(path, MASTER_PASSWORD)
         first.lock()
@@ -278,7 +312,7 @@ def test_session_preserves_kdf_costs_but_rotates_salt(tmp_path: Path) -> None:
     path = tmp_path / "profile.pmdb"
     session = VaultSession()
     try:
-        session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+        session.create(path, MASTER_PASSWORD, memory_mib=8)
         first_header = read_header(path)
         session.add_record({"account": "Example", "password": "secret"})
         second_header = read_header(path)
@@ -293,7 +327,7 @@ def test_session_preserves_kdf_costs_but_rotates_salt(tmp_path: Path) -> None:
 def test_failed_save_rolls_back_memory(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     path = tmp_path / "rollback.pmdb"
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
 
     def fail_write(*_args: object, **_kwargs: object) -> None:
         raise OSError("simulated disk failure")
@@ -310,7 +344,7 @@ def test_failed_save_rolls_back_memory(monkeypatch: pytest.MonkeyPatch, tmp_path
 def test_external_modification_rejects_session_mutation(tmp_path: Path) -> None:
     path = tmp_path / "conflict.pmdb"
     session = VaultSession()
-    session.create(path, MASTER_PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, MASTER_PASSWORD, memory_mib=8)
     path.write_bytes(path.read_bytes() + b"external")
     try:
         with pytest.raises(VaultConflictError):

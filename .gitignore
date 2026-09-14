@@ -38,5 +38,9 @@ Thumbs.db
 release/
 installer-output/
 
+# Temporary files
+tmp/
+
 # Private files
 LESSONS.md
+others/

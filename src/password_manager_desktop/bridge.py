@@ -78,18 +78,14 @@ class DesktopBridge:
         self,
         path: object,
         master_password: object,
-        overwrite: object = False,
         memory_mib: object = 64,
     ) -> dict[str, object]:
         def create() -> dict[str, object]:
-            if not isinstance(overwrite, bool):
-                raise TypeError("overwrite must be a boolean.")
             if not isinstance(memory_mib, int) or isinstance(memory_mib, bool):
                 raise TypeError("memory_mib must be an integer.")
             return self._session.create(
                 self._authorized_path(path, "create_vault", consume=True),
                 self._require_string(master_password, "master_password"),
-                overwrite=overwrite,
                 memory_mib=memory_mib,
             )
 
@@ -224,6 +220,8 @@ class DesktopBridge:
         path = Path(result[0]).expanduser().resolve()
         if purpose == "create_vault" and not path.suffix:
             path = path.with_suffix(".pmdb")
+        if purpose == "create_vault" and path.exists():
+            raise FileExistsError(f"Vault already exists: {path}. Choose a different name or open the existing vault.")
         self._grant(path, purpose)
         return {"path": str(path)}
 

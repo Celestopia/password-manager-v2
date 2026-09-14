@@ -105,21 +105,15 @@ def initialize_vault(
     path: Path,
     master_password: str,
     *,
-    overwrite: bool = False,
     kdf_profile: KdfProfile | None = None,
 ) -> FileFingerprint:
-    """Create an empty vault, retaining a backup when overwriting."""
+    """Create an empty vault without ever replacing an existing destination."""
 
-    exists = path.exists()
-    if exists and not overwrite:
-        raise FileExistsError(f"Vault already exists: {path}")
-    return write_records(
-        path,
-        [],
-        master_password,
-        kdf_profile=kdf_profile,
-        make_backup=exists and overwrite,
-    )
+    if path.exists():
+        raise FileExistsError(f"Vault already exists: {path}. Choose a different name or open the existing vault.")
+    encrypted = encrypt_payload(records_to_jsonl([]), master_password, kdf_profile=kdf_profile)
+    atomic_write(path, encrypted, make_backup=False, replace_existing=False)
+    return fingerprint_bytes(encrypted)
 
 
 def read_header(path: Path) -> dict[str, object]:
@@ -135,7 +129,7 @@ def read_import_jsonl(path: Path) -> list[Record]:
     return jsonl_to_records(read_bounded(path, MAX_IMPORT_SIZE, "Import file"))
 
 
-def atomic_write(path: Path, data: bytes, *, make_backup: bool) -> None:
+def atomic_write(path: Path, data: bytes, *, make_backup: bool, replace_existing: bool = True) -> None:
     """Write through a same-directory temporary file and atomic replacement."""
 
     path = path.resolve()
@@ -154,7 +148,16 @@ def atomic_write(path: Path, data: bytes, *, make_backup: bool) -> None:
             pass
         if make_backup and path.exists():
             shutil.copy2(path, backup_path)
-        os.replace(tmp_path, path)
+        if replace_existing:
+            os.replace(tmp_path, path)
+        else:
+            # Windows rename refuses a destination created during encryption too.
+            try:
+                os.rename(tmp_path, path)
+            except FileExistsError as exc:
+                raise FileExistsError(
+                    f"Vault already exists: {path}. Choose a different name or open the existing vault."
+                ) from exc
         tmp_path = None
     finally:
         if tmp_path is not None:

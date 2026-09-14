@@ -25,7 +25,7 @@ def tagged_vault(tmp_path: Path) -> Iterator[tuple[VaultSession, Path, list[Reco
     source = tmp_path / "source.jsonl"
     source.write_bytes(records_to_jsonl(records))
     session = VaultSession()
-    session.create(path, PASSWORD, overwrite=False, memory_mib=8)
+    session.create(path, PASSWORD, memory_mib=8)
     session.import_jsonl(source)
     try:
         yield session, path, records

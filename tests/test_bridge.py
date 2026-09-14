@@ -42,7 +42,7 @@ def test_bridge_requires_dialog_grants_and_never_returns_copied_secret(tmp_path:
     bridge = DesktopBridge(session=VaultSession(), clipboard=clipboard)  # type: ignore[arg-type]
     bridge._grant(path, "create_vault")
 
-    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, 8))
     saved = assert_data(
         bridge.add_record(
             {
@@ -88,7 +88,7 @@ def test_bridge_accepts_empty_password_but_rejects_null(tmp_path: Path) -> None:
     path = (tmp_path / "empty.pmdb").resolve()
     bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
     bridge._grant(path, "create_vault")
-    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, 8))
     try:
         saved = assert_data(bridge.add_record({"account": "Passwordless", "password": ""}))
         assert isinstance(saved, dict)
@@ -101,14 +101,27 @@ def test_bridge_accepts_empty_password_but_rejects_null(tmp_path: Path) -> None:
         bridge._shutdown()
 
 
+def test_bridge_rejects_existing_destination_even_with_grant(tmp_path: Path) -> None:
+    path = (tmp_path / "existing.pmdb").resolve()
+    path.write_bytes(b"existing vault")
+    bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
+    bridge._grant(path, "create_vault")
+    result = bridge.create_vault(str(path), MASTER_PASSWORD, 8)
+    assert result["ok"] is False
+    assert isinstance(result["error"], dict)
+    assert result["error"]["code"] == "FILE_EXISTS"
+    assert path.read_bytes() == b"existing vault"
+    assert assert_data(bridge.get_status()) == {"unlocked": False, "vault_path": None, "record_count": 0}
+
+
 def test_bridge_consumes_file_grants(tmp_path: Path) -> None:
     path = (tmp_path / "one-shot.pmdb").resolve()
     bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
     bridge._grant(path, "create_vault")
-    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(path), MASTER_PASSWORD, 8))
     bridge.lock_vault()
 
-    repeated = bridge.create_vault(str(path), MASTER_PASSWORD, True, 8)
+    repeated = bridge.create_vault(str(path), MASTER_PASSWORD, 8)
     assert repeated["ok"] is False
     assert repeated["error"] == {
         "code": "PERMISSION_DENIED",
@@ -123,7 +136,7 @@ def test_bridge_requires_one_shot_export_reauthentication(tmp_path: Path) -> Non
     clipboard = FakeClipboard()
     bridge = DesktopBridge(session=VaultSession(), clipboard=clipboard)  # type: ignore[arg-type]
     bridge._grant(vault_path, "create_vault")
-    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, 8))
 
     bridge._grant(first_export, "export_jsonl")
     denied = bridge.export_records(str(first_export), "jsonl", True)
@@ -153,7 +166,7 @@ def test_failed_export_reauthentication_locks_without_clearing_clipboard(tmp_pat
     clipboard.secret = "managed secret"
     bridge = DesktopBridge(session=VaultSession(), clipboard=clipboard)  # type: ignore[arg-type]
     bridge._grant(vault_path, "create_vault")
-    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, 8))
 
     response = bridge.authorize_export("incorrect master password")
 
@@ -178,7 +191,7 @@ def test_bridge_reports_merge_counts_and_import_conflicts(tmp_path: Path) -> Non
     record = new_record(account="Imported", password="secret")
     bridge = DesktopBridge(session=VaultSession(), clipboard=FakeClipboard())  # type: ignore[arg-type]
     bridge._grant(vault_path, "create_vault")
-    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, False, 8))
+    assert_data(bridge.create_vault(str(vault_path), MASTER_PASSWORD, 8))
 
     import_path.write_bytes(records_to_jsonl([record]))
     bridge._grant(import_path, "import")

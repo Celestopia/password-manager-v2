@@ -15,7 +15,7 @@ def test_add_accepts_empty_password(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     path = tmp_path / "empty.pmdb"
     master = "correct horse battery staple"
     session = VaultSession()
-    session.create(path, master, overwrite=False, memory_mib=8)
+    session.create(path, master, memory_mib=8)
     session.lock()
     answers = iter(["", "", master])
     monkeypatch.setattr("getpass.getpass", lambda _: next(answers))
@@ -42,6 +42,17 @@ def test_master_password_requirements_are_unchanged(password: str, monkeypatch: 
     monkeypatch.setattr("getpass.getpass", lambda _: password)
     with pytest.raises(ValueError):
         prompt_new_master_password()
+
+
+def test_init_rejects_existing_file_and_has_no_force_option(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = tmp_path / "existing.pmdb"
+    path.write_bytes(b"existing vault")
+    monkeypatch.setattr("getpass.getpass", lambda _: "correct horse battery staple")
+    assert main(["init", str(path), "--memory-mib", "8"]) == 1
+    assert path.read_bytes() == b"existing vault"
+    with pytest.raises(SystemExit) as exc_info:
+        build_parser().parse_args(["init", str(path), "--force"])
+    assert exc_info.value.code == 2
 
 
 def test_import_command_does_not_offer_destructive_replace_mode() -> None:

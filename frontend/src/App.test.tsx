@@ -119,6 +119,22 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: 'Create vault' })).toBeInTheDocument()
   })
 
+  it('rejects an existing creation path without offering overwrite', async () => {
+    const user = userEvent.setup()
+    const create = vi.spyOn(mockNativeApi, 'create_vault').mockResolvedValue({
+      ok: false, error: { code: 'FILE_EXISTS', message: 'Vault already exists. Choose a different name.' },
+    })
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Create new vault' }))
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Master password'), 'long-enough-password')
+    await user.type(screen.getByLabelText('Confirm password'), 'long-enough-password')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Vault already exists. Choose a different name.')
+    expect(screen.getByRole('dialog', { name: 'Create vault' })).toBeInTheDocument()
+    expect(create).toHaveBeenCalledWith('C:\\Mock\\new-vault.pmdb', 'long-enough-password', 64)
+  })
+
   it('automatically dismisses a success notice after unlocking', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })

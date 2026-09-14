@@ -157,14 +157,14 @@ export function App() {
     }
   }
 
-  const submitVault = async (values: { password: string; overwrite: boolean; memoryMiB: number }) => {
+  const submitVault = async (values: { password: string; memoryMiB: number }) => {
     if (!vaultDialog) return
     setBusy(true)
     setError('')
     try {
       const nextStatus = vaultDialog.mode === 'unlock'
         ? await api.unlock(vaultDialog.path, values.password)
-        : await api.create(vaultDialog.path, values.password, values.overwrite, values.memoryMiB)
+        : await api.create(vaultDialog.path, values.password, values.memoryMiB)
       setStatus(nextStatus)
       setVaultDialog(null)
       setSelectedTags([])

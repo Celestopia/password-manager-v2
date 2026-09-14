@@ -58,7 +58,8 @@ Set-Location ..
 
 The GUI uses native file dialogs for vault, import, and export paths. A new
 master password must contain at least 12 characters. The default Argon2id memory
-setting is 64 MiB.
+setting is 64 MiB. Creating a vault at an existing path is rejected; choose a
+different filename or open the existing vault. Creation never overwrites a vault.
 
 The tag selector below account search is derived from tags already assigned to
 entries; no separate registry is stored. Selecting multiple tags shows only

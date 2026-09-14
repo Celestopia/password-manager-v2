@@ -20,7 +20,7 @@ export interface NativeApi {
   choose_export_file(format: string): Promise<ApiResponse<{ path: string | null }>>
   authorize_export(masterPassword: string): Promise<ApiResponse<{ authorized: boolean }>>
   unlock_vault(path: string, password: string): Promise<ApiResponse<VaultStatus>>
-  create_vault(path: string, password: string, overwrite: boolean, memoryMiB: number): Promise<ApiResponse<VaultStatus>>
+  create_vault(path: string, password: string, memoryMiB: number): Promise<ApiResponse<VaultStatus>>
   lock_vault(): Promise<ApiResponse<VaultStatus>>
   list_records(query: string): Promise<ApiResponse<RecordSummary[]>>
   get_record_details(recordId: string): Promise<ApiResponse<RecordDetails>>

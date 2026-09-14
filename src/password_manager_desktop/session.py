@@ -117,7 +117,6 @@ class VaultSession:
         path: Path,
         master_password: str,
         *,
-        overwrite: bool,
         memory_mib: int = 64,
     ) -> dict[str, object]:
         """Create, lock, and enter a new empty vault session."""
@@ -136,7 +135,6 @@ class VaultSession:
                 fingerprint = initialize_vault(
                     resolved,
                     master_password,
-                    overwrite=overwrite,
                     kdf_profile=profile,
                 )
             except Exception:

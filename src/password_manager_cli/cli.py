@@ -37,7 +37,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = commands.add_parser("init", help="Create an encrypted vault.")
     add_vault_arg(init)
-    init.add_argument("--force", action="store_true", help="Overwrite an existing vault and retain a backup.")
     init.add_argument("--memory-mib", type=int, default=64, help="Argon2id memory cost in MiB.")
     init.set_defaults(handler=cmd_init)
 
@@ -150,7 +149,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     session = VaultSession()
     vault = resolve_vault_path(args.vault, require_exists=False)
     try:
-        session.create(vault, prompt_new_master_password(), overwrite=args.force, memory_mib=args.memory_mib)
+        session.create(vault, prompt_new_master_password(), memory_mib=args.memory_mib)
     finally:
         session.lock()
     print(f"Initialized vault: {vault}")
