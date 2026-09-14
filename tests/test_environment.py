@@ -20,7 +20,7 @@ def test_project_package_imports() -> None:
     import password_manager_core
     import password_manager_desktop  # noqa: F401
 
-    assert password_manager_core.__version__ == "0.1.0"
+    assert password_manager_core.__version__ == "0.7.8"
 
 
 def test_windows_application_icon_has_required_sizes() -> None:

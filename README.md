@@ -92,6 +92,13 @@ npm run dev
 The Vite mock is development-only. Production requires the pywebview bridge and
 never falls back to mock vault data.
 
+Drag the divider between the account list and details to resize the list from
+280 pixels up to half the window width. Drag within 180 pixels of the left edge
+to collapse it immediately; the chevron one-third down the left edge restores
+the default 390-pixel width (capped at half the window). The layout resets on
+every app launch. With the divider focused, arrow keys resize, Home or Enter
+collapses, and End selects the maximum width. Escape cancels an active drag.
+
 ## Use the CLI
 
 The CLI shares the desktop application's validation, locking, and transactional

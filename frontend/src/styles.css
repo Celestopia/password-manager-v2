@@ -49,7 +49,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand-symbol { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: #fff; background: #4f46d8; font-size: .8rem; }
 .brand strong { color: #161b2e; font-size: .94rem; }
 .topbar-actions { display: flex; align-items: center; gap: .5rem; }
-.workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(320px, 390px) 1fr; }
+.workspace { position: relative; min-height: 0; flex: 1; display: grid; grid-template-columns: var(--sidebar-width, 390px) minmax(0, 1fr); }
+.workspace.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
+.sidebar-collapsed > .records-pane { visibility: hidden; overflow: hidden; pointer-events: none; }
+.sidebar-divider { position: absolute; z-index: 14; top: 0; bottom: 0; left: var(--sidebar-width); width: 10px; transform: translateX(-50%); cursor: col-resize; touch-action: none; }
+.sidebar-divider::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; }
+.sidebar-divider:hover::after, .sidebar-divider:focus-visible::after, .sidebar-resizing .sidebar-divider::after { background: #8179eb; }
+.sidebar-divider[aria-disabled="true"] { pointer-events: none; }
+.sidebar-collapsed:not(.sidebar-resizing) > .sidebar-divider { visibility: hidden; }
+.sidebar-resizing { cursor: col-resize; user-select: none; }
+.sidebar-resizing > .records-pane, .sidebar-resizing > .detail-pane { pointer-events: none; }
+.sidebar-restore { position: absolute; z-index: 14; left: 0; top: 33.333%; transform: translateY(-50%); width: 28px; height: 48px; border: 1px solid #d9deea; border-left: 0; border-radius: 0 9px 9px 0; background: #fff; color: #4f46d8; font-size: 1.6rem; box-shadow: 2px 3px 10px rgba(31, 41, 75, .1); }
+.sidebar-restore:hover { background: #eeecff; }
+.records-pane { min-width: 0; }
 
 .records-pane { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid #dfe3ec; background: #fff; }
 .records-toolbar { display: flex; gap: .6rem; padding: 1rem 1rem .55rem; }
@@ -112,7 +124,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .export-actions { grid-column: 1; }
 .manage-tags-button { grid-column: 2; justify-self: end; }
 
-.detail-pane { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: clamp(.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 2rem); }
+.detail-pane { container-type: inline-size; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; padding: clamp(.75rem, 1.5vw, 1.25rem) clamp(1rem, 2.5vw, 2rem); }
 .empty-detail { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #7c8395; text-align: center; }
 .detail-pane > .empty-detail { grid-row: 1 / -1; }
 .empty-detail h2 { margin: 1rem 0 .3rem; color: #30364a; }
@@ -209,17 +221,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .danger-text { color: #b42335; }
 .danger-text:hover { color: #971b2b; background: #fff0f2; }
 
+@container (max-width: 520px) {
+  .detail-heading { flex-wrap: wrap; }
+  .detail-grid { overflow-y: auto; grid-template-columns: minmax(0, 1fr); grid-template-rows: 110px 230px 180px 130px 140px; }
+  .detail-grid > .detail-card { grid-column: 1; }
+}
+
 @media (max-width: 800px) {
-  .workspace { grid-template-columns: minmax(285px, 42%) 1fr; }
   .detail-pane { padding: 1rem; }
   .topbar-actions .button-quiet { display: none; }
 }
 
 @media (max-width: 620px) {
-  .workspace { display: block; overflow: auto; }
-  .records-pane { min-height: 50vh; border-right: 0; border-bottom: 1px solid #dfe3ec; }
-  .record-list { max-height: 45vh; }
-  .detail-pane { min-height: 50vh; overflow: visible; }
   .detail-grid { height: auto; grid-template-columns: 1fr; grid-template-rows: minmax(140px, 30vh) repeat(2, minmax(180px, 42vh)) minmax(120px, 26vh) minmax(180px, 36vh); }
   .secret-card, .description-card, .metadata-card { grid-column: auto; }
   .welcome-card { padding: 2.1rem 1.3rem; }

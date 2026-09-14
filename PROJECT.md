@@ -162,6 +162,22 @@ Vite development mode permits inline styles because its hot-reload client inject
 CSS through a `<style>` element; production output keeps the stricter external-
 style policy.
 
+The workspace divider is implemented by `ResizableWorkspace.tsx`. App owns its
+width as in-memory UI state (390 CSS pixels initially, zero means collapsed),
+without writing settings or vault data. It survives locking within the same
+App instance but resets on restart. ResizeObserver bounds the displayed width
+to 50% of the workspace, with a 280-pixel expanded minimum. Pointer positions
+below 180 pixels from the workspace left edge collapse immediately; dragging
+back restores the preview. Pointer release commits, while Escape, window blur,
+pointer cancellation, or lost capture restores the original width. The restore
+chevron sits at one-third of the content height and restores 390 pixels, capped
+by the current maximum. The mounted sidebar retains selection, filters, and
+scroll state while hidden and inert. Modal operations and account reordering
+disable the divider; pointer resizing prevents competing pane interactions.
+The separator supports arrow keys, Home/Enter to collapse, and End to maximize.
+Narrow detail panes use a scrollable single-column card layout via a container
+query, independent of window width.
+
 ### 3.5 CLI
 
 `password_manager_cli` provides initialization, list, search, show, add, edit,

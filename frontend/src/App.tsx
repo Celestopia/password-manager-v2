@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from './api/client'
+import { DEFAULT_SIDEBAR_WIDTH, ResizableWorkspace } from './components/ResizableWorkspace'
 import { ExportDialog } from './features/vault/ExportDialog'
 import { ManageTagsDialog } from './features/vault/ManageTagsDialog'
 import { PasswordDialog } from './features/vault/PasswordDialog'
@@ -31,6 +32,7 @@ function formatDate(value: string): string {
 }
 
 export function App() {
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [status, setStatus] = useState<VaultStatus | null>(null)
   const [records, setRecords] = useState<RecordSummary[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -428,8 +430,9 @@ export function App() {
         </div>
       </header>
       {(error || notice) && <div className={`banner app-banner ${error ? 'banner-error' : 'banner-success'}`} role={error ? 'alert' : 'status'}><span>{error || notice}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => { setError(''); setNotice('') }}>×</button></div>}
-      <div className="workspace">
-        <aside className="records-pane">
+      <ResizableWorkspace width={sidebarWidth} onWidthChange={setSidebarWidth}
+        disabled={busy || reordering || Boolean(recordDialog || passwordDialog || exportDialog || manageTags)}>
+        <aside id="account-sidebar" className="records-pane" inert={sidebarWidth === 0} aria-hidden={sidebarWidth === 0}>
           <div className="records-toolbar">
             <label className="search-box"><span aria-hidden="true">⌕</span><input aria-label="Search accounts" value={query} placeholder="Search accounts" disabled={busy || reordering} onChange={(event) => setQuery(event.target.value)} /></label>
             <button className="button-primary add-button" onClick={() => setRecordDialog({ mode: 'add' })} disabled={busy || reordering}>+ Add</button>
@@ -484,7 +487,7 @@ export function App() {
             </div>
           </>}
         </section>
-      </div>
+      </ResizableWorkspace>
       {recordDialog && <RecordDialog {...recordDialog} availableTags={tagNames} busy={busy} onClose={() => setRecordDialog(null)} onSubmit={saveRecord} />}
       {manageTags && <ManageTagsDialog tags={tagRegistry} busy={busy} onClose={() => setManageTags(false)} onRename={renameTag} onDelete={deleteTag} />}
       {passwordDialog && <PasswordDialog busy={busy} onClose={() => setPasswordDialog(false)} onSubmit={changePassword} />}

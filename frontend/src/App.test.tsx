@@ -65,6 +65,30 @@ describe('App', () => {
     expect(screen.getByLabelText('Password', { exact: true })).toBeInTheDocument()
   })
 
+  it('preserves account selection, search and scroll through collapse and resets on restart', async () => {
+    const user = userEvent.setup()
+    await mockNativeApi.unlock_vault('mock', 'password')
+    const view = render(<App />)
+    await user.click(await screen.findByRole('button', { name: /^Example Account/ }))
+    await user.type(screen.getByRole('textbox', { name: 'Search accounts' }), 'Example')
+    const list = document.querySelector('.record-list')!
+    list.scrollTop = 50
+    fireEvent.keyDown(screen.getByRole('separator'), { key: 'Home' })
+    expect(document.querySelector('#account-sidebar')).toHaveAttribute('inert')
+    expect(screen.getByRole('heading', { name: 'Example Account' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Expand account list' }))
+    expect(screen.getByRole('textbox', { name: 'Search accounts' })).toHaveValue('Example')
+    expect(document.querySelector('.record-list')).toBe(list)
+    expect(list.scrollTop).toBe(50)
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '390')
+    fireEvent.keyDown(screen.getByRole('separator'), { key: 'Home' })
+    view.unmount()
+    render(<App />)
+    expect(await screen.findByRole('separator')).toHaveAttribute('aria-valuenow', '390')
+    await user.click(screen.getByRole('button', { name: '+ Add' }))
+    expect(screen.getByRole('separator')).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('offers open and create actions while the vault is locked', async () => {
     render(<App />)
 
