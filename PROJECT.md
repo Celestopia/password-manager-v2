@@ -85,7 +85,8 @@ general-purpose RPC method.
 
 Native file dialogs create one-shot grants keyed by resolved path and purpose.
 Import, export, unlock, and create operations must consume a matching grant;
-typing an arbitrary path in JavaScript is rejected.
+typing an arbitrary path in JavaScript is rejected. The dedicated recent-vault
+unlock method additionally accepts a path validated against saved history.
 
 Plaintext export additionally requires a fresh master-password check enforced
 by `VaultSession`. Success creates a bridge-local, single-use authorization that
@@ -424,7 +425,24 @@ Unexpected exceptions never send tracebacks to the renderer. Frontend
 
 ## 8. Configuration and dependencies
 
-There is no external runtime configuration file, service endpoint, or
+Desktop recent-path metadata is stored separately from vaults in
+`%LOCALAPPDATA%\PasswordManagerV2\recent-vaults.json` as version 1 with a `paths`
+array, newest first, limited to three absolute paths. `RecentVaults` bounds reads
+to 64 KiB, rejects malformed metadata, deduplicates paths case-insensitively, and
+uses atomic writes. History failures are best-effort and do not fail successful
+vault operations. Concurrent processes may use last-writer-wins history; vault
+locking remains unchanged. No passwords or vault contents are stored here.
+Successful desktop create/unlock refreshes history; CLI behavior is unchanged.
+The bridge exposes list/forget/unlock-recent methods; unlock-recent validates
+membership at call time rather than granting arbitrary renderer paths access.
+Ordinary opens still require native-dialog grants. Missing paths remain listed,
+and forgetting removes only metadata. Dialogs prefer the newest existing parent
+folder, falling back to the installation directory. The welcome screen uses a
+294-pixel floating dropdown attached to the Open split button, closed by default.
+The welcome card uses a 30-pixel heading and 48-pixel action buttons; recent rows
+use 64-pixel heights and consistent SVG file-lock, chevron, and removal icons.
+
+There is no service endpoint or
 environment-based secret. KDF memory is selected only during vault creation;
 the default is 64 MiB and the authenticated profile is reused on every rewrite.
 

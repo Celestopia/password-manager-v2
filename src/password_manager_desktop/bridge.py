@@ -24,6 +24,7 @@ from password_manager_core.exceptions import (
 )
 
 from .clipboard import WindowsClipboard
+from .recent import RecentVaults
 from .resources import installation_directory
 from .session import VaultSession
 
@@ -37,6 +38,7 @@ class DesktopBridge:
 
     def __init__(self, session: VaultSession | None = None, clipboard: WindowsClipboard | None = None) -> None:
         self._session = session or VaultSession()
+        self._recent = RecentVaults()
         self._clipboard = clipboard or WindowsClipboard()
         self._window: webview.Window | None = None
         self._path_grants: dict[Path, set[str]] = {}
@@ -57,6 +59,26 @@ class DesktopBridge:
     def choose_vault(self) -> dict[str, object]:
         return self._call(lambda: self._choose_file("open_vault"))
 
+    def list_recent_vaults(self) -> dict[str, object]:
+        return self._call(self._recent.paths)
+
+    def forget_recent_vault(self, path: object) -> dict[str, object]:
+        def forget() -> list[str]:
+            self._recent.remove(self._require_string(path, "path"))
+            return self._recent.paths()
+        return self._call(forget)
+
+    def unlock_recent_vault(self, path: object, master_password: object) -> dict[str, object]:
+        return self._call(lambda: self._unlock(
+            self._recent.selected(self._require_string(path, "path")),
+            self._require_string(master_password, "master_password"),
+        ))
+
+    def _unlock(self, path: Path, password: str) -> dict[str, object]:
+        status = self._session.unlock(path, password)
+        self._recent.remember(path)
+        return status
+
     def choose_new_vault_path(self) -> dict[str, object]:
         return self._call(lambda: self._choose_file("create_vault"))
 
@@ -68,7 +90,7 @@ class DesktopBridge:
 
     def unlock_vault(self, path: object, master_password: object) -> dict[str, object]:
         return self._call(
-            lambda: self._session.unlock(
+            lambda: self._unlock(
                 self._authorized_path(path, "open_vault", consume=True),
                 self._require_string(master_password, "master_password"),
             )
@@ -83,11 +105,14 @@ class DesktopBridge:
         def create() -> dict[str, object]:
             if not isinstance(memory_mib, int) or isinstance(memory_mib, bool):
                 raise TypeError("memory_mib must be an integer.")
-            return self._session.create(
-                self._authorized_path(path, "create_vault", consume=True),
+            selected = self._authorized_path(path, "create_vault", consume=True)
+            status = self._session.create(
+                selected,
                 self._require_string(master_password, "master_password"),
                 memory_mib=memory_mib,
             )
+            self._recent.remember(selected)
+            return status
 
         return self._call(create)
 
@@ -200,7 +225,7 @@ class DesktopBridge:
         if purpose == "create_vault":
             result = window.create_file_dialog(
                 webview.FileDialog.SAVE,
-                directory=str(self._default_vault_directory()),
+                directory=str(self._recent.directory(self._default_vault_directory())),
                 save_filename="vault.pmdb",
                 file_types=("Password Manager vault (*.pmdb)",),
             )
@@ -212,7 +237,7 @@ class DesktopBridge:
         else:
             result = window.create_file_dialog(
                 webview.FileDialog.OPEN,
-                directory=str(self._default_vault_directory()),
+                directory=str(self._recent.directory(self._default_vault_directory())),
                 file_types=("Password Manager vault (*.pmdb)",),
             )
         if not result:

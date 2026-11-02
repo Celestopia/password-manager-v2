@@ -61,6 +61,14 @@ master password must contain at least 12 characters. The default Argon2id memory
 setting is 64 MiB. Creating a vault at an existing path is rejected; choose a
 different filename or open the existing vault. Creation never overwrites a vault.
 
+The arrow beside **Open a vault** shows up to three recent vaults in a compact
+dropdown. Select one to enter its master password, or use × to forget its path
+without deleting the file. History is stored in
+`%LOCALAPPDATA%\PasswordManagerV2\recent-vaults.json`; vaults stay where you saved
+them. Only successful desktop creation/unlocking updates history. Open/Create
+dialogs start in the newest available recent folder, falling back to the
+application directory. Missing vaults remain listed for reconnectable drives.
+
 The tag selector below account search is derived from tags already assigned to
 entries; no separate registry is stored. Selecting multiple tags shows only
 accounts containing every selected tag. Its dropdown floats over the sidebar,

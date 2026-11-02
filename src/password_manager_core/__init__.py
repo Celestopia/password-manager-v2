@@ -1,6 +1,6 @@
 """Core encryption and vault services for Password Manager v2."""
 
-__version__ = "0.7.8"
+__version__ = "0.8.0"
 
 from .crypto import KdfProfile
 from .models import Record, new_record

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { api } from './api/client'
+import { RecentVaultMenu } from './features/vault/RecentVaultMenu'
 import { DEFAULT_SIDEBAR_WIDTH, ResizableWorkspace } from './components/ResizableWorkspace'
 import { ExportDialog } from './features/vault/ExportDialog'
 import { ManageTagsDialog } from './features/vault/ManageTagsDialog'
@@ -15,7 +16,7 @@ import { VaultDialog } from './features/vault/VaultDialog'
 import { externalWebsiteUrl } from './features/vault/websiteUrl'
 import type { CustomField, MovePlacement, RecordDetails, RecordInput, RecordSummary, VaultStatus } from './types'
 
-type VaultDialogState = { mode: 'unlock' | 'create'; path: string }
+type VaultDialogState = { mode: 'unlock' | 'create'; path: string; recent?: boolean }
 type RecordDialogState = { mode: 'add' } | { mode: 'edit'; initial: RecordDetails; customFields: CustomField[] }
 
 const MESSAGE_DISMISS_DELAY_MS = 5_000
@@ -32,6 +33,8 @@ function formatDate(value: string): string {
 }
 
 export function App() {
+  const [recentPaths, setRecentPaths] = useState<string[]>([])
+  useEffect(() => { void api.recentVaults().then(setRecentPaths).catch(() => {}) }, [])
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
   const [status, setStatus] = useState<VaultStatus | null>(null)
   const [records, setRecords] = useState<RecordSummary[]>([])
@@ -165,9 +168,10 @@ export function App() {
     setError('')
     try {
       const nextStatus = vaultDialog.mode === 'unlock'
-        ? await api.unlock(vaultDialog.path, values.password)
+        ? await (vaultDialog.recent ? api.unlockRecentVault : api.unlock)(vaultDialog.path, values.password)
         : await api.create(vaultDialog.path, values.password, values.memoryMiB)
       setStatus(nextStatus)
+      void api.recentVaults().then(setRecentPaths).catch(() => {})
       setVaultDialog(null)
       setSelectedTags([])
       setRecords(await api.list(''))
@@ -410,7 +414,9 @@ export function App() {
           {error && <div className="banner banner-error" role="alert">{error}</div>}
           {notice && <div className="banner banner-success" role="status">{notice}</div>}
           <div className="welcome-actions">
-            <button className="button-primary" onClick={() => void chooseVault('unlock')}>Open a vault</button>
+            <RecentVaultMenu paths={recentPaths} onBrowse={() => void chooseVault('unlock')}
+              onOpen={path => setVaultDialog({ mode: 'unlock', path, recent: true })}
+              onForget={async path => { try { setRecentPaths(await api.forgetRecentVault(path)) } catch (caught) { showError(caught) } }} />
             <button className="button-secondary" onClick={() => void chooseVault('create')}>Create new vault</button>
           </div>
           <p className="security-note">Your master password is never stored on disk.</p>

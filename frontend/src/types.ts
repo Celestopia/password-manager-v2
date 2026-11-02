@@ -13,6 +13,9 @@ export interface ApiSuccess<T> { ok: true; data: T }
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure
 
 export interface NativeApi {
+  list_recent_vaults(): Promise<ApiResponse<string[]>>
+  forget_recent_vault(path: string): Promise<ApiResponse<string[]>>
+  unlock_recent_vault(path: string, password: string): Promise<ApiResponse<VaultStatus>>
   get_status(): Promise<ApiResponse<VaultStatus>>
   choose_vault(): Promise<ApiResponse<{ path: string | null }>>
   choose_new_vault_path(): Promise<ApiResponse<{ path: string | null }>>

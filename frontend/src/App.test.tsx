@@ -89,6 +89,24 @@ describe('App', () => {
     expect(screen.getByRole('separator')).toHaveAttribute('aria-disabled', 'true')
   })
 
+  it('opens a recent vault directly through password confirmation', async () => {
+    const user = userEvent.setup()
+    await mockNativeApi.unlock_vault('D:\\Vaults\\Personal.pmdb', 'synthetic-password')
+    await mockNativeApi.lock_vault()
+    const recent = vi.spyOn(mockNativeApi, 'unlock_recent_vault')
+    const browse = vi.spyOn(mockNativeApi, 'choose_vault')
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Show recent vaults' }))
+    await user.click(await screen.findByText('Personal.pmdb'))
+    expect(screen.getByRole('dialog', { name: 'Unlock vault' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Vault')).toHaveValue('D:\\Vaults\\Personal.pmdb')
+    await user.type(screen.getByLabelText('Master password'), 'synthetic-password')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+    await screen.findByRole('button', { name: 'Lock vault' })
+    expect(recent).toHaveBeenCalledWith('D:\\Vaults\\Personal.pmdb', 'synthetic-password')
+    expect(browse).not.toHaveBeenCalled()
+  })
+
   it('offers open and create actions while the vault is locked', async () => {
     render(<App />)
 

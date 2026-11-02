@@ -2,6 +2,7 @@ import type { ApiResponse, CustomField, NativeApi, RecordDetails, RecordSummary,
 
 type MockRecord = RecordSummary & { description: string; password: string; custom_fields: CustomField[] }
 let unlocked = false
+let recentPaths: string[] = []
 let masterPassword = 'correct horse battery staple'
 let exportAuthorized = false
 const demoRecords = (): MockRecord[] => [{ id: 'demo-record', account: 'Example Account', username: 'demo@example.com', password: 'demo-password', phonenumber: '', mail: 'demo@example.com', date: '2026-08', url: 'https://example.com', description: 'Example background information.', tags: ['demo'], custom_fields: [{ key: 'Recovery code', value: 'example-only' }], has_custom_fields: true, created_at: '2026-08-28T00:00:00Z', updated_at: '2026-08-28T00:00:00Z' }]
@@ -24,6 +25,12 @@ const summary = (record: MockRecord): RecordSummary => ({
 })
 
 export const mockNativeApi: NativeApi = {
+  async list_recent_vaults() { return ok([...recentPaths]) },
+  async forget_recent_vault(path) { recentPaths = recentPaths.filter(item => item !== path); return ok([...recentPaths]) },
+  async unlock_recent_vault(path, password) {
+    if (!recentPaths.includes(path)) return failure('PERMISSION_DENIED', 'The vault is not in recent history.')
+    return mockNativeApi.unlock_vault(path, password)
+  },
   async move_record(recordId, targetId, placement) {
     if (!unlocked) return failure('SESSION_STATE_INVALID', 'No vault is unlocked.')
     if (placement !== 'before' && placement !== 'after') return failure('INVALID_ARGUMENT', 'Invalid placement.')
@@ -43,8 +50,8 @@ export const mockNativeApi: NativeApi = {
   async choose_import_file() { return ok({ path: 'C:\\Mock\\import.jsonl' }) },
   async choose_export_file(format) { if (!exportAuthorized) return failure('PERMISSION_DENIED', 'Plaintext export requires fresh master-password authorization.'); return ok({ path: `C:\\Mock\\accounts.${format}` }) },
   async authorize_export(password) { exportAuthorized = false; if (password !== masterPassword) { unlocked = false; return failure('VAULT_AUTHENTICATION_FAILED', 'Master password is incorrect. The vault has been locked.') } exportAuthorized = true; return ok({ authorized: true }) },
-  async unlock_vault(_path, password) { unlocked = true; masterPassword = password; return ok(status()) },
-  async create_vault(_path, password) { unlocked = true; masterPassword = password; records = []; return ok(status()) },
+  async unlock_vault(path, password) { recentPaths = [path, ...recentPaths.filter(item => item !== path)].slice(0, 3); unlocked = true; masterPassword = password; return ok(status()) },
+  async create_vault(path, password) { recentPaths = [path, ...recentPaths.filter(item => item !== path)].slice(0, 3); unlocked = true; masterPassword = password; records = []; return ok(status()) },
   async lock_vault() { unlocked = false; exportAuthorized = false; return ok(status()) },
   async list_records(query) { const needle = query.toLocaleLowerCase(); return ok(records.filter((record) => record.account.toLocaleLowerCase().includes(needle)).map(summary)) },
   async get_record_details(recordId) { const record = records.find((item) => item.id === recordId)!; const details: RecordDetails = { ...summary(record), description: record.description, has_password: Boolean(record.password), custom_fields: record.custom_fields.map((field) => ({ key: field.key, has_value: Boolean(field.value) })) }; return ok(details) },
@@ -88,6 +95,7 @@ export const mockNativeApi: NativeApi = {
 }
 
 export function resetMockNativeApi() {
+  recentPaths = []
   unlocked = false
   masterPassword = 'correct horse battery staple'
   exportAuthorized = false

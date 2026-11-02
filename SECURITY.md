@@ -12,7 +12,10 @@ operation flows.
   Python evaluation, or generic URL-opening method. Website anchors are limited
   to absolute HTTP and HTTPS URLs and open in the system browser.
 - File operations require a one-shot native-dialog path grant for their exact
-  purpose. Plaintext export also requires explicit confirmation and fresh
+  purpose, except the dedicated recent-vault unlock operation, which validates
+  membership in per-user history and still requires the master password.
+  Recent history contains plaintext paths, never credentials or vault contents.
+  Plaintext export also requires explicit confirmation and fresh
   master-password reauthentication. A mismatch immediately locks the vault and
   leaves clipboard content unchanged.
 - JSONL import is merge-only. Identical existing IDs are skipped, different
